@@ -1,0 +1,7 @@
+# Ingore...
+input/
+output/
+node_modules/
+
+# Except for...
+!.keep
