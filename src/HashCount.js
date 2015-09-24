@@ -9,6 +9,19 @@ class HashCount {
         this.hashes = {};
         this.organization = params.organizations[params.organization];
         this.params = params;
+        this.stats = {
+            clicks: {
+                total: 0,
+                unique: 0,
+            },
+            submissions: {
+                first: null,
+                total: 0,
+                unique: 0,
+            },
+            total: 0,
+            unique: 0,
+        };
 
         if (!this.organization) {
             console.log(`Could not find ${params.organization}.`);
@@ -19,7 +32,14 @@ class HashCount {
             this.loadClicks.bind(this),
             this.loadSubmissions.bind(this),
         ], () => {
-            console.log(`${this.params.organization} has ${_.keys(this.hashes).length} total unique hashes, between clicks and submissions.`);
+            this.stats.total = this.stats.clicks.total + this.stats.submissions.total;
+            this.stats.unique = _.keys(this.hashes).length;
+
+            console.log(`${this.params.organization} has ${this.stats.unique} total unique hashes, between clicks and submissions.`);
+
+            if (this.params.callback) {
+                this.params.callback(1);
+            }
         });
     }
 
@@ -33,8 +53,11 @@ class HashCount {
         console.log('Loading click hashes.');
 
         parser.on('finish', () => {
-            console.log(`Total: ${count}`);
-            console.log(`Unique: ${_.keys(hashes).length}`);
+            this.stats.clicks.total = count;
+            this.stats.clicks.unique = _.keys(hashes).length;
+
+            console.log(`Total: ${this.stats.clicks.total}`);
+            console.log(`Unique: ${this.stats.clicks.unique}`);
             console.log('Finished loading click hashes.');
 
             _.extend(this.hashes, hashes);
@@ -55,6 +78,7 @@ class HashCount {
 
     loadSubmissions(next) {
         var count = 0;
+        var first = null;
         var hashes = {};
         var source = this.organization.source;
         var parser = parse({
@@ -64,8 +88,12 @@ class HashCount {
         console.log(`Loading submission hashes with a source of '${source}'.`);
 
         parser.on('finish', () => {
-            console.log(`Total: ${count}`);
-            console.log(`Unique: ${_.keys(hashes).length}`);
+            this.stats.submissions.first = first;
+            this.stats.submissions.total = count;
+            this.stats.submissions.unique = _.keys(hashes).length;
+
+            console.log(`Total: ${this.stats.submissions.total}`);
+            console.log(`Unique: ${this.stats.submissions.unique}`);
             console.log('Finished loading submission hashes.');
 
             _.extend(this.hashes, hashes);
@@ -82,6 +110,9 @@ class HashCount {
 
                 count++;
                 hashes[row.hash] = true;
+                if (!first) {
+                    first = row.created_at;
+                }
             }
         });
 
