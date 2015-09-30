@@ -25,7 +25,7 @@ class HashCounts {
             });
         }, (err) => {
             _.each(counts, (count, key) => {
-                stats[key] = count.stats;
+                stats[key] = count.hashes.submissions.size;
             });
 
             var json = beautify(JSON.stringify(stats), {
