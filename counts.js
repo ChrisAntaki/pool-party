@@ -62,6 +62,14 @@ async.series([
                             };
 
                             next();
+
+                            // // Saving misses
+                            // var data = JSON.stringify(Array.from(list.misses));
+                            // var prettyData = beautify(data, {
+                            //     indent_size: 4,
+                            // });
+
+                            // fs.writeFile(path.join(__dirname, `output/misses-${organization.source}.csv`), prettyData, next);
                         },
                         path: path.join(__dirname, `input/org-${organization.source}.csv`),
                         submissions: submissions,
