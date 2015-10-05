@@ -3,6 +3,7 @@ var fs = require('fs');
 var parse = require('csv-parse');
 
 module.exports = class SetOfSubmissionHashes {
+
     constructor(params) {
         this.hashes = new Set();
         this.params = params;
@@ -28,4 +29,5 @@ module.exports = class SetOfSubmissionHashes {
 
         fs.createReadStream(this.params.path).pipe(parser);
     }
+
 }

@@ -5,6 +5,7 @@ var fs = require('fs');
 var organizations = require('./input/organizations');
 var path = require('path');
 var SetOfClickHashes = require('./src/SetOfClickHashes');
+var SetOfListHashes = require('./src/SetOfListHashes');
 var SetOfSubmissionHashes = require('./src/SetOfSubmissionHashes');
 
 var submissions;
@@ -15,28 +16,61 @@ async.series([
         console.log('Loading submissions');
 
         submissions = new SetOfSubmissionHashes({
-            callback: next,
+            callback: () => {
+                console.log('Unique submissions: ' + submissions.hashes.size);
+
+                next();
+            },
             path: path.join(__dirname, 'input/new.csv'),
         });
     },
 
-    // Collect clicks
+    // Analyze organizations
     (next) => {
         async.eachSeries(organizations, (organization, next) => {
-            var clicks = new SetOfClickHashes({
-                callback: () => {
-                    organization.clicks = {
-                        total: clicks.total,
-                        unique: clicks.hashes.size,
-                        matches: clicks.matches.size,
-                    };
+            console.log('Analyzing ' + organization.name);
+            async.series([
+                // Clicks
+                (next) => {
+                    console.log(' - Clicks');
 
-                    console.log(organization);
+                    var clicks = new SetOfClickHashes({
+                        callback: () => {
+                            organization.clicks = {
+                                total: clicks.total,
+                                unique: clicks.hashes.size,
+                                matches: clicks.matches.size,
+                            };
 
-                    next();
+                            next();
+                        },
+                        path: path.join(__dirname, `input/clicks-${organization.source}.csv`),
+                        submissions: submissions,
+                    });
                 },
-                path: path.join(__dirname, `input/clicks-${organization.source}.csv`),
-                submissions: submissions,
+
+                // List
+                (next) => {
+                    console.log(' - List');
+
+                    var list = new SetOfListHashes({
+                        callback: () => {
+                            organization.list = {
+                                total: list.total,
+                                unique: list.hashes.size,
+                                misses: list.misses.size,
+                            };
+
+                            next();
+                        },
+                        path: path.join(__dirname, `input/org-${organization.source}.csv`),
+                        submissions: submissions,
+                    });
+                },
+            ], (err) => {
+                console.log(organization);
+
+                next(err);
             });
         }, next);
     },
