@@ -25,7 +25,11 @@ async.series([
         async.eachSeries(organizations, (organization, next) => {
             var clicks = new SetOfClickHashes({
                 callback: () => {
-                    organization.clicks = clicks.hashes.size;
+                    organization.clicks = {
+                        total: clicks.total,
+                        unique: clicks.hashes.size,
+                        matches: clicks.matches.size,
+                    };
 
                     console.log(organization);
 

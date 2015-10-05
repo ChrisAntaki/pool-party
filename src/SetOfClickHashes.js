@@ -5,7 +5,9 @@ var parse = require('csv-parse');
 module.exports = class SetOfClickHashes {
     constructor(params) {
         this.hashes = new Set();
+        this.matches = new Set();
         this.params = params;
+        this.total = 0;
 
         this.collect();
     }
@@ -21,9 +23,13 @@ module.exports = class SetOfClickHashes {
 
         parser.on('readable', () => {
             for (var row; row = parser.read();) {
+                this.hashes.add(row.hash);
+
                 if (this.params.submissions.hashes.has(row.hash)) {
-                    this.hashes.add(row.hash);
+                    this.matches.add(row.hash);
                 }
+
+                this.total += 1;
             }
         });
 
