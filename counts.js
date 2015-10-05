@@ -35,7 +35,7 @@ async.series([
 
                     next();
                 },
-            path: path.join(__dirname, `input/clicks-${organization.source}.csv`),
+                path: path.join(__dirname, `input/clicks-${organization.source}.csv`),
                 submissions: submissions,
             });
         }, next);
@@ -51,5 +51,7 @@ async.series([
     });
 
     console.log('Saved results to output/counts.json');
-    fs.writeFile(path.join(__dirname, 'output/counts.json'), prettyData);
+    fs.writeFile(path.join(__dirname, 'output/counts.json'), prettyData, (err) => {
+        process.exit();
+    });
 });
