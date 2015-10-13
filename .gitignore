@@ -1,7 +1,7 @@
-# Ingore...
-input/
-output/
+# Ignore:
 node_modules/
+input/*
+output/*
 
-# Except for...
-!.keep
+# Except for:
+!*.keep
