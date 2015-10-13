@@ -10,7 +10,7 @@ const Submissions = require('../Submissions');
 
 // Modifications
 Organization.prototype.requestSubmission = function requestSubmission (params) {
-    let eligible = this.eligible[params.from.sources[0]];
+    let eligible = params.free ? this.eligible.free : this.eligible[params.from.sources[0]];
     let lostIndexes = [];
     let submission = _.find(eligible, (submission, index) => {
         if (!params.given[submission.hash]) {
@@ -28,11 +28,18 @@ Organization.prototype.requestSubmission = function requestSubmission (params) {
     return submission;
 }
 
-Organization.prototype.giveHash = function giveHash (params) {
+Organization.prototype.giveSubmission = function giveSubmission (params) {
     let submission = params.submission;
     params.given[submission.hash] = submission;
     params.to.received.push(submission);
     this.given.push(submission);
+}
+
+Organization.prototype.takeFreeSubmission = function takeFreeSubmission (params) {
+    let submission = params.submission;
+    params.given[submission.hash] = submission;
+    this.received.push(submission);
+    this.freeCount++;
 }
 
 // Class
@@ -45,11 +52,6 @@ module.exports = class YouGetWhatYouGive {
         this.organizations = params.organizations;
         this.submissions = params.submissions;
 
-        // Logging
-        this.reportInterval = null;
-        this.previousHashCount = 0;
-        this.minDurationForLog = 2;
-
         this.start();
     }
 
@@ -59,6 +61,7 @@ module.exports = class YouGetWhatYouGive {
             (next) => {
                 _.each(this.organizations, (organization) => {
                     organization.eligible = {};
+                    organization.freeCount = 0;
                     organization.given = [];
                     organization.received = [];
                 });
@@ -105,7 +108,7 @@ module.exports = class YouGetWhatYouGive {
             // Finding eligible hashes for each organization
             (next) => {
                 console.log('Finding eligible hashes for each organization');
-                // Creating eligibity objects for every organization, referencing every other organization
+                // Creating eligibity arrays
                 _.each(this.organizations, (organization) => {
                     _.each(this.organizations, (otherOrganization) => {
                         if (organization === otherOrganization) {
@@ -114,6 +117,8 @@ module.exports = class YouGetWhatYouGive {
 
                         organization.eligible[otherOrganization.sources[0]] = [];
                     });
+
+                    organization.eligible.free = [];
                 });
 
                 // Assigning eligiblity to submissions
@@ -121,13 +126,18 @@ module.exports = class YouGetWhatYouGive {
                     _.each(this.submissions.hashes, (submission) => {
                         if (!organization.hashes[submission.hash]) {
                             submission.eligible.push(organization);
-                            _.each(submission.sources, (otherOrganization) => {
-                                if (organization === otherOrganization) {
-                                    return;
-                                }
 
-                                organization.eligible[otherOrganization.sources[0]].push(submission);
-                            });
+                            if (_.size(submission.sources) > 0) {
+                                _.each(submission.sources, (otherOrganization) => {
+                                    if (organization === otherOrganization) {
+                                        return;
+                                    }
+
+                                    organization.eligible[otherOrganization.sources[0]].push(submission);
+                                });
+                            } else {
+                                organization.eligible.free.push(submission);
+                            }
                         }
                     });
                 });
@@ -166,7 +176,7 @@ module.exports = class YouGetWhatYouGive {
                             });
 
                             if (desiredSubmission) {
-                                givingOrganization.giveHash({
+                                givingOrganization.giveSubmission({
                                     given: this.given,
                                     submission: desiredSubmission,
                                     to: owedOrganization,
@@ -190,7 +200,43 @@ module.exports = class YouGetWhatYouGive {
                         next();
                     }
                 }, () => {
-                    console.log('Ran out of hashes to give.');
+                    console.log('Trading has halted');
+                    next();
+                });
+            },
+
+            // Distributing free submissions
+            (next) => {
+                console.log('Distributing free submissions');
+                let freeCount = 0;
+                let givenCount = _.size(this.given);
+
+                async.forever((next) => {
+                    let organization = _.max(this.organizations, (organization) => {
+                        let freeShare = (organization.freeCount / freeCount) || 0;
+                        let givenShare = organization.given.length / givenCount;
+                        return givenShare - freeShare;
+                    });
+
+                    let submission = organization.requestSubmission({
+                        free: true,
+                        given: this.given,
+                    });
+
+                    if (!submission) {
+                        next(1);
+                        return;
+                    }
+
+                    organization.takeFreeSubmission({
+                        given: this.given,
+                        submission: submission,
+                    });
+
+                    freeCount++;
+
+                    next();
+                }, (err) => {
                     next();
                 });
             },
@@ -227,15 +273,11 @@ module.exports = class YouGetWhatYouGive {
         let count = 0;
         _.each(this.organizations, (organization) => {
             let keyCount = organization.received.length;
-            console.log(organization.sources[0] + ': ' +  keyCount);
+            console.log(`${organization.sources[0]} : ${keyCount} (${organization.freeCount})`);
             count += keyCount;
         });
 
         console.log('-------');
-
-        // console.log('SPEED: ' + (count - this.previousHashCount) + ' swaps per second');
-
-        this.previousHashCount = count;
     }
 
     getShuffledListOfGivingOrganizations() {
