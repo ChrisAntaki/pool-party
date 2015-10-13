@@ -127,7 +127,9 @@ module.exports = class YouGetWhatYouGive {
                         if (!organization.hashes[submission.hash]) {
                             submission.eligible.push(organization);
 
-                            if (_.size(submission.sources) > 0) {
+                            if (_.isEmpty(submission.sources)) {
+                                organization.eligible.free.push(submission);
+                            } else {
                                 _.each(submission.sources, (otherOrganization) => {
                                     if (organization === otherOrganization) {
                                         return;
@@ -135,8 +137,6 @@ module.exports = class YouGetWhatYouGive {
 
                                     organization.eligible[otherOrganization.sources[0]].push(submission);
                                 });
-                            } else {
-                                organization.eligible.free.push(submission);
                             }
                         }
                     });
