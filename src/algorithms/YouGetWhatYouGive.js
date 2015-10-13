@@ -10,17 +10,9 @@ const Submissions = require('../Submissions');
 
 // Modifications
 Organization.prototype.requestSubmission = function requestSubmission (params) {
-    // let now; // Debug
-
     let eligible = this.eligible[params.from.sources[0]];
-
-    // now = Date.now(); // Debug
     let key = _.keys(eligible)[0];
-    // console.log(Date.now() - now + ' | let key = _.keys(eligible)[0];'); // Debug
-
-    // now = Date.now(); // Debug
     let submission = eligible[key];
-    // console.log(Date.now() - now + ' | let submission = eligible[key];'); // Debug
 
     return submission;
 }
@@ -64,7 +56,6 @@ module.exports = class YouGetWhatYouGive {
                     organization.fails = 0;
                     organization.given = [];
                     organization.received = [];
-                    organization.sourced = {};
                 });
 
                 _.each(this.submissions.hashes, (submission) => {
@@ -92,7 +83,6 @@ module.exports = class YouGetWhatYouGive {
                         let organization = sourceMap[source];
                         if (organization) {
                             submission.sources[organization.sources[0]] = organization;
-                            organization.sourced[submission.hash] = submission;
                             matched = true;
                         } else {
                             delete submission.sources[source];
