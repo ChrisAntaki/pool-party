@@ -21,8 +21,17 @@ module.exports = class Submissions {
         });
 
         parser.on('readable', () => {
-            for (let submission; submission = parser.read();) {
-                this.hashes[submission.hash] = submission;
+            for (let row; row = parser.read();) {
+                let hash = this.hashes[row.hash];
+
+                if (!hash) {
+                    hash = this.hashes[row.hash] = {
+                        hash: row.hash,
+                        sources: {},
+                    };
+                }
+
+                hash.sources[row.source] = true;
             }
         });
 
