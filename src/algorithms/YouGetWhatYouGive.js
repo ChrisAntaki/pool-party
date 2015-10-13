@@ -10,26 +10,29 @@ const Submissions = require('../Submissions');
 
 // Modifications
 Organization.prototype.requestSubmission = function requestSubmission (params) {
-    return this.eligible[params.from.sources[0]][0];
+    let eligible = this.eligible[params.from.sources[0]];
+    let lostIndexes = [];
+    let submission = _.find(eligible, (submission, index) => {
+        if (!params.given[submission.hash]) {
+            return true;
+        } else {
+            lostIndexes.push(index);
+            return false;
+        }
+    });
+
+    if (lostIndexes.length > 0) {
+        _.pullAt(eligible, lostIndexes);
+    }
+
+    return submission;
 }
 
 Organization.prototype.giveHash = function giveHash (params) {
     let submission = params.submission;
-
-    this.given.push(submission);
-
-    _.each(submission.eligible, (organization) => {
-        _.each(organization.eligible, (eligible) => {
-            _.each(eligible, (eligibleSubmission, index) => {
-                if (eligibleSubmission === submission) {
-                    _.pullAt(eligible, index);
-                    return false;
-                }
-            });
-        });
-    });
-
+    params.given[submission.hash] = submission;
     params.to.received.push(submission);
+    this.given.push(submission);
 }
 
 // Class
@@ -38,12 +41,14 @@ module.exports = class YouGetWhatYouGive {
     constructor(params) {
         this.callback = params.callback;
         this.free = [];
+        this.given = {};
         this.organizations = params.organizations;
         this.submissions = params.submissions;
 
         // Logging
         this.reportInterval = null;
         this.previousHashCount = 0;
+        this.minDurationForLog = 2;
 
         this.start();
     }
@@ -147,27 +152,60 @@ module.exports = class YouGetWhatYouGive {
                 }, 1000);
 
                 async.forever((next) => {
+                    let now;
+                    let duration;
                     let fails = 0;
+
+                    now = Date.now();
                     let givingOrganizations = this.getShuffledListOfGivingOrganizations();
+                    duration = Date.now() - now;
+                    if (duration >= this.minDurationForLog) {
+                        console.log(duration + ' getShuffledListOfGivingOrganizations');
+                    }
+
                     _.each(givingOrganizations, (givingOrganization) => {
+                        now = Date.now();
                         let owedOrganizations = this.getShuffledListOfOwedOrganizations({
                             except: givingOrganization,
                         });
+                        duration = Date.now() - now;
+                        if (duration >= this.minDurationForLog) {
+                            console.log(Date.now() - now + ' getShuffledListOfOwedOrganizations');
+                        }
+
                         let success = false;
 
                         _.each(owedOrganizations, (owedOrganization) => {
+                            now = Date.now();
                             let desiredSubmission = owedOrganization.requestSubmission({
                                 from: givingOrganization,
+                                given: this.given,
                             });
+                            duration = Date.now() - now;
+                            if (duration >= this.minDurationForLog) {
+                                console.log(duration + ' requestSubmission');
+                            }
 
                             if (desiredSubmission) {
+                                now = Date.now();
                                 givingOrganization.giveHash({
+                                    given: this.given,
                                     submission: desiredSubmission,
                                     to: owedOrganization,
                                 });
+                                duration = Date.now() - now;
+                                if (duration >= this.minDurationForLog) {
+                                    console.log(duration + ' giveHash');
+                                }
 
                                 success = true;
+                                now = Date.now();
                                 _.pull(owedOrganizations, owedOrganization);
+                                duration = Date.now() - now;
+                                if (duration >= this.minDurationForLog) {
+                                    console.log(duration + ' pull');
+                                }
+
                                 return false;
                             }
                         });
@@ -178,13 +216,14 @@ module.exports = class YouGetWhatYouGive {
                     });
 
                     if (fails === givingOrganizations.length) {
-                        console.log('Ran out of hashes to give.');
-                        clearInterval(this.reportInterval);
                         next(1);
                     } else {
                         next();
                     }
                 }, () => {
+                    console.log('Ran out of hashes to give.');
+                    clearInterval(this.reportInterval);
+
                     next();
                 });
             },
@@ -249,7 +288,7 @@ module.exports = class YouGetWhatYouGive {
         }).sort((a, b) => {
             let scoreA = a.given.length - a.received.length;
             let scoreB = b.given.length - b.received.length;
-            return scoreB - scoreA; // Sorting rarity ASC
+            return scoreB - scoreA;
         });
     }
 
