@@ -1,8 +1,8 @@
 'use strict';
 
 // Modules
-var fs = require('fs');
-var parse = require('csv-parse');
+const fs = require('fs');
+const parse = require('csv-parse');
 
 module.exports = class Organization {
 
@@ -10,18 +10,19 @@ module.exports = class Organization {
             this.hashes = {};
             this.name = params.json.name;
             this.params = params;
-            this.source = params.json.source;
+            this.sources = params.json.sources;
 
             this.collect();
         }
 
         collect() {
-            var parser = parse({
+            const parser = parse({
                 columns: ['hash'],
             });
 
             parser.on('finish', () => {
                 this.params.callback();
+                delete this.params;
             });
 
             parser.on('readable', () => {

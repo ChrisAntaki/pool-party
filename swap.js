@@ -9,37 +9,44 @@ const path = require('path');
 const Submissions = require('./src/Submissions');
 
 // Flow
-var config = require('./input/config.json');
-var storage = {};
+const config = require('./input/config.json');
+let storage = {};
 async.series([
+    // Verify CLI argument
+    (next) => {
+        if (!process.argv[2]) {
+            next('Please enter an algorithm as a CLI argument. Ex: YouGetWhatYouGive')
+        } else {
+            next();
+        }
+    },
+
     // Organizations
     (next) => {
         storage.organizations = [];
         async.eachSeries(config.organizations, (organizationJSON, next) => {
             console.log(`Collecting suppressed hashes for ${organizationJSON.name}`);
-            let organization = new Organization({
+            const organization = new Organization({
                 callback: next,
                 json: organizationJSON,
                 path: path.join(__dirname, `input/org-${organizationJSON.sources[0]}.csv`),
             });
             storage.organizations.push(organization);
-        }, (err) => {
-            console.log('Suppressed hashes were collected');
-            next(err);
-        });
+        }, next);
     },
 
     // Submissions
     (next) => {
+        console.log(`Collecting submissions`);
         storage.submissions = new Submissions({
             callback: next,
             path: path.join(__dirname, `input/new.csv`),
         });
     },
 
-    // Test
+    // Swap
     (next) => {
-        let Algorithm = require('./src/algorithms/YouGetWhatYouGive');
+        const Algorithm = require('./src/algorithms/' + process.argv[2]);
         new Algorithm({
             callback: next,
             organizations: storage.organizations,
@@ -51,5 +58,5 @@ async.series([
         console.log(err);
     }
 
-    console.log('Hey!');
+    console.log('The end');
 });

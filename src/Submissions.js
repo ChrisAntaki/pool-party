@@ -1,6 +1,6 @@
 'use strict';
-var fs = require('fs');
-var parse = require('csv-parse');
+const fs = require('fs');
+const parse = require('csv-parse');
 
 module.exports = class Submissions {
 
@@ -12,7 +12,7 @@ module.exports = class Submissions {
     }
 
     collect() {
-        var parser = parse({
+        const parser = parse({
             columns: true,
         });
 
@@ -21,8 +21,8 @@ module.exports = class Submissions {
         });
 
         parser.on('readable', () => {
-            for (let row; row = parser.read();) {
-                this.hashes[row.hash] = row;
+            for (let submission; submission = parser.read();) {
+                this.hashes[submission.hash] = submission;
             }
         });
 
