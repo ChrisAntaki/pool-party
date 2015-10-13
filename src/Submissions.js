@@ -2,20 +2,18 @@
 var fs = require('fs');
 var parse = require('csv-parse');
 
-module.exports = class SetOfClickHashes {
+module.exports = class Submissions {
 
     constructor(params) {
-        this.hashes = new Set();
-        this.matches = new Set();
+        this.hashes = {};
         this.params = params;
-        this.total = 0;
 
         this.collect();
     }
 
     collect() {
         var parser = parse({
-            columns: ['hash'],
+            columns: true,
         });
 
         parser.on('finish', () => {
@@ -23,14 +21,8 @@ module.exports = class SetOfClickHashes {
         });
 
         parser.on('readable', () => {
-            for (var row; row = parser.read();) {
-                this.hashes.add(row.hash);
-
-                if (this.params.submissions.hashes.has(row.hash)) {
-                    this.matches.add(row.hash);
-                }
-
-                this.total += 1;
+            for (let row; row = parser.read();) {
+                this.hashes[row.hash] = row;
             }
         });
 
