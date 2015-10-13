@@ -1,6 +1,7 @@
 'use strict';
 
 // Modules
+const _ = require('lodash');
 const fs = require('fs');
 const parse = require('csv-parse');
 
@@ -12,10 +13,27 @@ module.exports = class Organization {
             this.params = params;
             this.sources = params.json.sources;
 
-            this.collect();
+            // this.collectByStreaming();
+            this.collectAtOnce();
         }
 
-        collect() {
+        collectAtOnce() {
+            _.each(
+                fs.readFileSync(this.params.path, 'utf-8')
+                    .replace(/"/g, '')
+                    .replace(/\r/g, '\n')
+                    .replace(/\n\n/g, '\n')
+                    .split('\n'),
+
+                (row) => {
+                    this.hashes[row.trim()] = true;
+                }
+            );
+
+            this.params.callback();
+        }
+
+        collectByStreaming() {
             const parser = parse({
                 columns: ['hash'],
             });

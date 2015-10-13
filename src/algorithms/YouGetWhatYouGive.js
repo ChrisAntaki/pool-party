@@ -147,64 +147,33 @@ module.exports = class YouGetWhatYouGive {
             // Swap
             (next) => {
                 console.log('Starting swap!');
-                this.reportInterval = setInterval(() => {
-                    this.printStatus();
-                }, 1000);
-
                 async.forever((next) => {
-                    let now;
-                    let duration;
                     let fails = 0;
 
-                    now = Date.now();
                     let givingOrganizations = this.getShuffledListOfGivingOrganizations();
-                    duration = Date.now() - now;
-                    if (duration >= this.minDurationForLog) {
-                        console.log(duration + ' getShuffledListOfGivingOrganizations');
-                    }
 
                     _.each(givingOrganizations, (givingOrganization) => {
-                        now = Date.now();
                         let owedOrganizations = this.getShuffledListOfOwedOrganizations({
                             except: givingOrganization,
                         });
-                        duration = Date.now() - now;
-                        if (duration >= this.minDurationForLog) {
-                            console.log(Date.now() - now + ' getShuffledListOfOwedOrganizations');
-                        }
 
                         let success = false;
 
                         _.each(owedOrganizations, (owedOrganization) => {
-                            now = Date.now();
                             let desiredSubmission = owedOrganization.requestSubmission({
                                 from: givingOrganization,
                                 given: this.given,
                             });
-                            duration = Date.now() - now;
-                            if (duration >= this.minDurationForLog) {
-                                console.log(duration + ' requestSubmission');
-                            }
 
                             if (desiredSubmission) {
-                                now = Date.now();
                                 givingOrganization.giveHash({
                                     given: this.given,
                                     submission: desiredSubmission,
                                     to: owedOrganization,
                                 });
-                                duration = Date.now() - now;
-                                if (duration >= this.minDurationForLog) {
-                                    console.log(duration + ' giveHash');
-                                }
 
                                 success = true;
-                                now = Date.now();
                                 _.pull(owedOrganizations, owedOrganization);
-                                duration = Date.now() - now;
-                                if (duration >= this.minDurationForLog) {
-                                    console.log(duration + ' pull');
-                                }
 
                                 return false;
                             }
@@ -222,8 +191,6 @@ module.exports = class YouGetWhatYouGive {
                     }
                 }, () => {
                     console.log('Ran out of hashes to give.');
-                    clearInterval(this.reportInterval);
-
                     next();
                 });
             },
@@ -250,7 +217,7 @@ module.exports = class YouGetWhatYouGive {
 
             this.printStatus();
 
-            console.log('The end');
+            console.log('Hash files are ready!');
         });
     }
 
@@ -258,14 +225,15 @@ module.exports = class YouGetWhatYouGive {
         console.log('-------');
 
         let count = 0;
-
         _.each(this.organizations, (organization) => {
             let keyCount = organization.received.length;
-            console.log(organization.sources[0] + ' | ' +  keyCount);
+            console.log(organization.sources[0] + ': ' +  keyCount);
             count += keyCount;
         });
 
-        console.log((count - this.previousHashCount) + ' hashes/second');
+        console.log('-------');
+
+        // console.log('SPEED: ' + (count - this.previousHashCount) + ' swaps per second');
 
         this.previousHashCount = count;
     }
