@@ -53,7 +53,6 @@ module.exports = class YouGetWhatYouGive {
             (next) => {
                 _.each(this.organizations, (organization) => {
                     organization.eligible = {};
-                    organization.fails = 0;
                     organization.given = [];
                     organization.received = [];
                 });
@@ -182,10 +181,7 @@ module.exports = class YouGetWhatYouGive {
                         });
 
                         if (!success) {
-                            // givingOrganization.fails++;
                             fails++;
-                        } else {
-                            // givingOrganizations.fails = 0;
                         }
                     });
 
@@ -246,8 +242,6 @@ module.exports = class YouGetWhatYouGive {
     getShuffledListOfGivingOrganizations() {
         return _.shuffle(_.filter(this.organizations, (organization) => {
             return (
-                organization.fails < 100
-                &&
                 organization.given.length <= organization.received.length
             );
         }));
