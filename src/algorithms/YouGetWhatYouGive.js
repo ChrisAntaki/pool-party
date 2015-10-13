@@ -16,9 +16,11 @@ Organization.prototype.requestSubmission = function requestSubmission (params) {
 
 Organization.prototype.giveHash = function giveHash (params) {
     let submission = params.submission;
-    _.each(submission.sources, (organization) => {
-        organization.given[submission.hash] = submission;
-    });
+
+    this.given[submission.hash] = submission;
+    // _.each(submission.sources, (organization) => {
+    //     organization.given[submission.hash] = submission;
+    // });
 
     _.each(submission.eligible, (organization) => {
         _.each(organization.eligible, (eligible) => {
@@ -112,7 +114,10 @@ module.exports = class YouGetWhatYouGive {
                         if (!organization.hashes[submission.hash]) {
                             submission.eligible[organization.sources[0]] = organization;
                             _.each(submission.sources, (otherOrganization) => {
-                                organization.eligible[otherOrganization.sources[0]][submission.hash] = submission;
+                                let eligible = organization.eligible[otherOrganization.sources[0]];
+                                if (eligible) {
+                                    eligible[submission.hash] = submission;
+                                }
                             });
                         }
                     });
@@ -120,9 +125,7 @@ module.exports = class YouGetWhatYouGive {
 
                 console.log('Sorting eligible hashes');
                 _.each(this.organizations, (organization) => {
-                    console.log(`Eligibility for ${organization.name}:`);
                     _.each(organization.eligible, (eligible, source) => {
-                        console.log(`${source} has ${_.keys(eligible).length} keys`);
                         let eligibleArray = [];
                         _.each(eligible, (submission) => {
                             eligibleArray.push(submission);
@@ -204,24 +207,35 @@ module.exports = class YouGetWhatYouGive {
                 console.log(err);
             }
 
+            _.each(this.organizations, (organization) => {
+                console.log(organization.name);
+                console.log('Given: ' + _.keys(organization.given).length);
+                console.log('Received: ' + _.keys(organization.received).length);
+                console.log('---');
+            });
+
             console.log('The end');
         });
     }
 
     getShuffledListOfGivingOrganizations() {
         return _.shuffle(_.filter(this.organizations, (organization) => {
-            return Object.keys(organization.given).length <= Object.keys(organization.received).length
+            return Object.keys(organization.given).length <= Object.keys(organization.received).length;
         }));
     }
 
     getShuffledListOfOwedOrganizations(params) {
-        return _.shuffle(_.filter(this.organizations, (organization) => {
+        return _.filter(this.organizations, (organization) => {
             return (
                 organization !== params.except
                 &&
                 Object.keys(organization.given).length >= Object.keys(organization.received).length
             );
-        }));
+        }).sort((a, b) => {
+            let scoreA = Object.keys(a.given).length - Object.keys(a.received).length;
+            let scoreB = Object.keys(b.given).length - Object.keys(b.received).length;
+            return scoreB - scoreA;
+        });
     }
 
 }
