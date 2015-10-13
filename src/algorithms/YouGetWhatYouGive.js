@@ -10,11 +10,7 @@ const Submissions = require('../Submissions');
 
 // Modifications
 Organization.prototype.requestSubmission = function requestSubmission (params) {
-    let eligible = this.eligible[params.from.sources[0]];
-    let key = _.keys(eligible)[0];
-    let submission = eligible[key];
-
-    return submission;
+    return this.eligible[params.from.sources[0]][0];
 }
 
 Organization.prototype.giveHash = function giveHash (params) {
@@ -24,7 +20,12 @@ Organization.prototype.giveHash = function giveHash (params) {
 
     _.each(submission.eligible, (organization) => {
         _.each(organization.eligible, (eligible) => {
-            delete eligible[submission.hash];
+            _.each(eligible, (eligibleSubmission, index) => {
+                if (eligibleSubmission === submission) {
+                    _.pullAt(eligible, index);
+                    return false;
+                }
+            });
         });
     });
 
@@ -36,7 +37,7 @@ module.exports = class YouGetWhatYouGive {
 
     constructor(params) {
         this.callback = params.callback;
-        this.free = {};
+        this.free = [];
         this.organizations = params.organizations;
         this.submissions = params.submissions;
 
@@ -58,7 +59,7 @@ module.exports = class YouGetWhatYouGive {
                 });
 
                 _.each(this.submissions.hashes, (submission) => {
-                    submission.eligible = {};
+                    submission.eligible = [];
                 });
 
                 next();
@@ -89,7 +90,7 @@ module.exports = class YouGetWhatYouGive {
                     });
 
                     if (!matched) {
-                        this.free[submission.hash] = submission;
+                        this.free.push(submission);
                     }
                 });
 
@@ -106,7 +107,7 @@ module.exports = class YouGetWhatYouGive {
                             return;
                         }
 
-                        organization.eligible[otherOrganization.sources[0]] = {};
+                        organization.eligible[otherOrganization.sources[0]] = [];
                     });
                 });
 
@@ -114,12 +115,13 @@ module.exports = class YouGetWhatYouGive {
                 _.each(this.organizations, (organization) => {
                     _.each(this.submissions.hashes, (submission) => {
                         if (!organization.hashes[submission.hash]) {
-                            submission.eligible[organization.sources[0]] = organization;
+                            submission.eligible.push(organization);
                             _.each(submission.sources, (otherOrganization) => {
-                                let eligible = organization.eligible[otherOrganization.sources[0]];
-                                if (eligible) {
-                                    eligible[submission.hash] = submission;
+                                if (organization === otherOrganization) {
+                                    return;
                                 }
+
+                                organization.eligible[otherOrganization.sources[0]].push(submission);
                             });
                         }
                     });
@@ -127,19 +129,9 @@ module.exports = class YouGetWhatYouGive {
 
                 console.log('Sorting eligible hashes');
                 _.each(this.organizations, (organization) => {
-                    _.each(organization.eligible, (eligible, source) => {
-                        let eligibleArray = [];
-                        _.each(eligible, (submission) => {
-                            eligibleArray.push(submission);
-                        });
-
-                        eligibleArray.sort((a, b) => {
-                            return _.keys(a.eligible).length - _.keys(b.eligible).length;
-                        });
-
-                        eligible = {};
-                        _.each(eligibleArray, (submission) => {
-                            eligible[submission.hash] = submission;
+                    _.each(organization.eligible, (eligible) => {
+                        eligible.sort((a, b) => {
+                            return a.eligible.length - b.eligible.length;
                         });
                     });
                 });
