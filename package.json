@@ -11,9 +11,6 @@
   "dependencies": {
     "async": "^1.4.2",
     "csv-parse": "^1.0.0",
-    "js-beautify": "^1.5.10",
-    "lodash": "^3.10.1",
-    "nconf": "^0.7.1",
-    "numeral": "^1.5.3"
+    "lodash": "^3.10.1"
   }
 }
