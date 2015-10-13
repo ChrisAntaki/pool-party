@@ -1,4 +1,5 @@
 'use strict';
+const _ = require('lodash');
 const fs = require('fs');
 const parse = require('csv-parse');
 
@@ -12,20 +13,24 @@ module.exports = class Submissions {
     }
 
     collect() {
+        let submissions = {};
+
         const parser = parse({
             columns: true,
         });
 
         parser.on('finish', () => {
+            this.hashes = _.values(submissions);
+
             this.params.callback();
         });
 
         parser.on('readable', () => {
             for (let row; row = parser.read();) {
-                let hash = this.hashes[row.hash];
+                let hash = submissions[row.hash];
 
                 if (!hash) {
-                    hash = this.hashes[row.hash] = {
+                    hash = submissions[row.hash] = {
                         hash: row.hash,
                         sources: {},
                     };
