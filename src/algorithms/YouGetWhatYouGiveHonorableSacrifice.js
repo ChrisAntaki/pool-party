@@ -3,6 +3,7 @@
 // Modules
 const _ = require('lodash');
 const async = require('async');
+const config = require('../../input/config');
 const fs = require('fs');
 const Organization = require('../Organization');
 const path = require('path');
@@ -76,11 +77,14 @@ module.exports = class YouGetWhatYouGive {
                     organization.freeCount = 0;
                     organization.given = [];
                     organization.received = [];
+                    organization.sacrificing = false;
                 });
 
                 _.each(this.submissions.hashes, (submission) => {
                     // Used to determine rarity of submission
                     submission.eligible = [];
+
+                    submission.sacrificed = false;
                 });
 
                 next();
@@ -116,6 +120,8 @@ module.exports = class YouGetWhatYouGive {
                 console.log('Finding eligible hashes for each organization');
                 // Creating eligibity arrays
                 _.each(this.organizations, (organization) => {
+                    organization.eligible.free = [];
+
                     _.each(this.organizations, (otherOrganization) => {
                         if (organization === otherOrganization) {
                             return;
@@ -123,14 +129,10 @@ module.exports = class YouGetWhatYouGive {
 
                         organization.eligible[otherOrganization.sources[0]] = [];
                     });
-
-                    organization.eligible.free = [];
                 });
 
                 // Assigning eligiblity to submissions
                 _.each(this.submissions.hashes, (submission) => {
-                    let isFree = submission.sourceObjects.length === 0;
-
                     _.each(this.organizations, (organization) => {
                         // Skip suppressed hashes
                         if (organization.hashes[submission.hash]) {
@@ -139,7 +141,103 @@ module.exports = class YouGetWhatYouGive {
 
                         // Used to determine rarity of submission
                         submission.eligible.push(organization);
+                    });
+                });
 
+                next();
+            },
+
+            // Sort submissions by eligibility
+            (next) => {
+                this.submissions.hashes.sort((a, b) => {
+                    return a.eligible.length - b.eligible.length;
+                });
+
+                next();
+            },
+
+            // Repayments
+            (next) => {
+                console.log('Repayments');
+                _.each(config.sourcesToRepay, (amount, source) => {
+                    let organization = _.find(this.organizations, (organization) => {
+                        return source === organization.sources[0];
+                    });
+
+                    // Source unsourced submissions, from the recipient's suppression list
+                    _.each(this.submissions.hashes, (submission) => {
+                        if (
+                            organization.hashes[submission.hash]
+                            &&
+                            submission.sourceObjects.length === 0
+                        ) {
+                            submission.sourceObjects.push(organization);
+                            amount--;
+                        }
+
+                        if (amount === 0) {
+                            console.log('Repayed everything to ' + organization.name);
+                            return false;
+                        }
+                    });
+                });
+
+                next();
+            },
+
+            // Destroy remaining unsourced submissions
+            (next) => {
+                console.log('Destroying unsourced submissions');
+                let indexesToRemove = [];
+
+                _.each(this.submissions.hashes, (submission, index) => {
+                    if (submission.sourceObjects.length === 0) {
+                        indexesToRemove.push(index);
+                    }
+                });
+
+                console.log(`Destroying ${indexesToRemove.length} unsourced submissions`);
+
+                _.pullAt(this.submissions.hashes, indexesToRemove);
+
+                next();
+            },
+
+            // Honorable sacrifice
+            (next) => {
+                console.log('Honorable sacrifice');
+                let sacrificers = _.filter(this.organizations, (organization) => {
+                    return _.includes(config.sourcesToSacrifice, organization.sources[0]);
+                });
+
+                _.each(sacrificers, (sacrificer) => {
+                    console.log(sacrificer.name);
+                    sacrificer.sacrificing = true;
+
+                    // Remove all references to sourceObjects
+                    let count = 0;
+
+                    _.each(this.submissions.hashes, (submission, index) => {
+                        if (_.includes(submission.sourceObjects, sacrificer)) {
+                            _.pull(submission.sourceObjects, sacrificer);
+                            count++;
+                        }
+
+                    });
+
+                    console.log(`Removed a source from ${count} submissions.`);
+                });
+
+                next();
+            },
+
+            // Assigning eligiblity to organizations
+            (next) => {
+                console.log('Assigning eligiblity to organizations');
+                _.each(this.submissions.hashes, (submission) => {
+                    let isFree = submission.sourceObjects.length === 0;
+
+                    _.each(submission.eligible, (organization) => {
                         if (isFree) {
                             organization.eligible.free.push(submission);
                         } else {
@@ -151,15 +249,6 @@ module.exports = class YouGetWhatYouGive {
                                 organization.eligible[otherOrganization.sources[0]].push(submission);
                             });
                         }
-                    });
-                });
-
-                console.log('Sorting eligible hashes');
-                _.each(this.organizations, (organization) => {
-                    _.each(organization.eligible, (eligible) => {
-                        eligible.sort((a, b) => {
-                            return a.eligible.length - b.eligible.length;
-                        });
                     });
                 });
 
@@ -225,6 +314,10 @@ module.exports = class YouGetWhatYouGive {
 
                 async.forever((next) => {
                     let organization = _.max(this.organizations, (organization) => {
+                        if (organization.sacrificing) {
+                            return 0;
+                        }
+
                         let freeShare = (organization.freeCount / freeCount) || 0;
                         let givenShare = organization.given.length / givenCount;
                         return givenShare - freeShare;
@@ -260,13 +353,17 @@ module.exports = class YouGetWhatYouGive {
                     console.log(`:D The new count (${count}) is larger than the existing count (${this.highestSwapCount}).`);
                     this.highestSwapCount = count;
                 } else {
-                    console.log(`:) The new count (${count}) is smaller than the existing count (${this.highestSwapCount}).`);
+                    console.log(`¯\\_(ツ)_/¯ The new count (${count}) is smaller than the existing count (${this.highestSwapCount}).`);
                     next();
                     return;
                 }
 
                 console.log('Saving hashes for each organization');
                 _.each(this.organizations, (organization) => {
+                    if (organization.sacrificing) {
+                        return;
+                    }
+
                     let data = '';
 
                     _.each(organization.received, (submission) => {
@@ -290,6 +387,10 @@ module.exports = class YouGetWhatYouGive {
 
     getSwapCount() {
         return _.sum(this.organizations, (organization) => {
+            if (organization.sacrificing) {
+                return 0;
+            }
+
             return organization.received.length;
         });
     }
@@ -297,6 +398,10 @@ module.exports = class YouGetWhatYouGive {
     getSummary() {
         let summary = 'ORG,SWAPPED,UNSOURCED,TOTAL\n';
         _.each(this.organizations, (organization) => {
+            if (organization.sacrificing) {
+                return;
+            }
+
             let keyCount = organization.received.length;
             summary += `${organization.sources[0]},${keyCount - organization.freeCount},${organization.freeCount},${keyCount}\n`;
         });
@@ -306,6 +411,10 @@ module.exports = class YouGetWhatYouGive {
 
     getShuffledListOfGivingOrganizations() {
         return _.shuffle(_.filter(this.organizations, (organization) => {
+            if (organization.sacrificing) {
+                return false;
+            }
+
             return (
                 organization.given.length <= organization.received.length
             );
@@ -314,6 +423,10 @@ module.exports = class YouGetWhatYouGive {
 
     getShuffledListOfOwedOrganizations(params) {
         return _.filter(this.organizations, (organization) => {
+            if (organization.sacrificing) {
+                return false;
+            }
+
             return (
                 organization !== params.except
                 &&
