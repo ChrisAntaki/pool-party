@@ -40,7 +40,7 @@ async.series([
         console.log(`Collecting submissions`);
         storage.submissions = new Submissions({
             callback: next,
-            path: path.join(__dirname, `input/new.csv`),
+            path: path.join(__dirname, `input/submissions.csv`),
         });
     },
 
