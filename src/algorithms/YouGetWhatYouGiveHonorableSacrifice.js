@@ -78,12 +78,12 @@ module.exports = class YouGetWhatYouGive {
                     organization.given = [];
                     organization.received = [];
                     organization.sacrificing = false;
+                    organization.sourced = [];
                 });
 
                 _.each(this.submissions.hashes, (submission) => {
                     // Used to determine rarity of submission
                     submission.eligible = [];
-
                     submission.sacrificed = false;
                 });
 
@@ -107,6 +107,7 @@ module.exports = class YouGetWhatYouGive {
                     _.each(_.keys(submission.sources), (source) => {
                         let organization = sourceMap[source];
                         if (organization) {
+                            organization.sourced.push(submission);
                             submission.sourceObjects.push(organization);
                         }
                     });
@@ -149,9 +150,7 @@ module.exports = class YouGetWhatYouGive {
 
             // Sort submissions by eligibility
             (next) => {
-                this.submissions.hashes.sort((a, b) => {
-                    return a.eligible.length - b.eligible.length;
-                });
+                this.submissions.hashes.sort((a, b) => a.eligible.length - b.eligible.length);
 
                 next();
             },
@@ -206,9 +205,10 @@ module.exports = class YouGetWhatYouGive {
             // Honorable sacrifice
             (next) => {
                 console.log('Honorable sacrifice');
-                let sacrificers = _.filter(this.organizations, (organization) => {
-                    return _.includes(config.sourcesToSacrifice, organization.sources[0]);
-                });
+                let sacrificers = _.filter(
+                    this.organizations,
+                    (organization) => _.includes(config.sourcesToSacrifice, organization.sources[0])
+                );
 
                 _.each(sacrificers, (sacrificer) => {
                     console.log(sacrificer.name);
@@ -309,19 +309,25 @@ module.exports = class YouGetWhatYouGive {
             // Distributing free submissions
             (next) => {
                 console.log('Distributing free submissions');
-                let freeCount = 0;
-                let givenCount = _.size(this.given);
+                let validOrganizations = _.filter(this.organizations, (organization) => !organization.sacrificing);
 
                 async.forever((next) => {
-                    let organization = _.max(this.organizations, (organization) => {
-                        if (organization.sacrificing) {
-                            return 0;
-                        }
+                    // Check if every organization has bounced
+                    if (_.isEmpty(validOrganizations)) {
+                        next(1);
+                        return;
+                    }
 
-                        let freeShare = (organization.freeCount / freeCount) || 0;
-                        let givenShare = organization.given.length / givenCount;
-                        return givenShare - freeShare;
-                    });
+                    // Find the organization who has taken the least free submissions
+                    let organization = _.min(validOrganizations, organization => organization.freeCount);
+
+                    // Stop when an organization has been repayed
+                    if (organization.received.length >= organization.sourced.length) {
+                        console.log(organization.name + ' is bowing out.');
+                        _.pull(validOrganizations, organization);
+                        next();
+                        return;
+                    }
 
                     let submission = organization.requestSubmission({
                         free: true,
@@ -329,7 +335,9 @@ module.exports = class YouGetWhatYouGive {
                     });
 
                     if (!submission) {
-                        next(1);
+                        console.log(organization.name + ' is bowing out.');
+                        _.pull(validOrganizations, organization);
+                        next();
                         return;
                     }
 
@@ -337,8 +345,6 @@ module.exports = class YouGetWhatYouGive {
                         given: this.given,
                         submission: submission,
                     });
-
-                    freeCount++;
 
                     next();
                 }, (err) => {
@@ -396,14 +402,14 @@ module.exports = class YouGetWhatYouGive {
     }
 
     getSummary() {
-        let summary = 'ORG,SWAPPED,UNSOURCED,TOTAL\n';
+        let summary = 'Organization,Owed,Received From Swap,Received From Sacrifice,Received Total\n';
         _.each(this.organizations, (organization) => {
             if (organization.sacrificing) {
                 return;
             }
 
             let keyCount = organization.received.length;
-            summary += `${organization.sources[0]},${keyCount - organization.freeCount},${organization.freeCount},${keyCount}\n`;
+            summary += `${organization.name},${organization.sourced.length},${keyCount - organization.freeCount},${organization.freeCount},${keyCount}\n`;
         });
 
         return summary;

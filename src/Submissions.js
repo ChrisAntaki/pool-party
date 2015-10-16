@@ -22,6 +22,8 @@ module.exports = class Submissions {
         parser.on('finish', () => {
             this.hashes = _.values(submissions);
 
+            console.log('Unique submission hashes: ' + this.hashes.length);
+
             this.params.callback();
         });
 
