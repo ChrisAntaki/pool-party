@@ -170,6 +170,7 @@ module.exports = class YouGetWhatYouGive {
                             &&
                             submission.sourceObjects.length === 0
                         ) {
+                            organization.sourced.push(submission);
                             submission.sourceObjects.push(organization);
                             amount--;
                         }
