@@ -149,6 +149,7 @@ module.exports = class YouGetWhatYouGive {
             },
 
             // Sort submissions by eligibility
+            // Most common to most rare
             (next) => {
                 this.submissions.hashes.sort((a, b) => a.eligible.length - b.eligible.length);
 
@@ -159,6 +160,8 @@ module.exports = class YouGetWhatYouGive {
             (next) => {
                 console.log('Repayments');
                 _.each(config.sourcesToRepay, (amount, source) => {
+                    let repayedCount = 0;
+
                     let organization = _.find(this.organizations, (organization) => {
                         return source === organization.sources[0];
                     });
@@ -172,14 +175,15 @@ module.exports = class YouGetWhatYouGive {
                         ) {
                             organization.sourced.push(submission);
                             submission.sourceObjects.push(organization);
-                            amount--;
+                            repayedCount++;
                         }
 
-                        if (amount === 0) {
-                            console.log('Repayed everything to ' + organization.name);
+                        if (amount >= repayedCount) {
                             return false;
                         }
                     });
+
+                    console.log(`Repayed ${repayedCount} to ${organization.name}`);
                 });
 
                 next();
@@ -265,7 +269,7 @@ module.exports = class YouGetWhatYouGive {
                     let givingOrganizations = this.getShuffledListOfGivingOrganizations();
 
                     _.each(givingOrganizations, (givingOrganization) => {
-                        let owedOrganizations = this.getShuffledListOfOwedOrganizations({
+                        let owedOrganizations = this.getSortedListOfOwedOrganizations({
                             except: givingOrganization,
                         });
 
@@ -428,7 +432,7 @@ module.exports = class YouGetWhatYouGive {
         }));
     }
 
-    getShuffledListOfOwedOrganizations(params) {
+    getSortedListOfOwedOrganizations(params) {
         return _.filter(this.organizations, (organization) => {
             if (organization.sacrificing) {
                 return false;
