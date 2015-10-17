@@ -453,7 +453,7 @@ module.exports = class YouGetWhatYouGive {
             }
 
             return (
-                organization.given.length >= organization.received.length // We could add some slack here
+                organization.given.length >= organization.received.length
             );
         }).sort((a, b) => {
             // Sort those who have given more than they've received first
