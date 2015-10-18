@@ -364,13 +364,6 @@ module.exports = class YouGetWhatYouGive {
             // Find the organization who has taken the least free submissions
             let organization = _.min(validOrganizations, organization => organization.received.length / organization.sourced.length);
 
-            // Stop when an organization has been repayed
-            if (organization.received.length >= organization.sourced.length) {
-                _.pull(validOrganizations, organization);
-                next();
-                return;
-            }
-
             let submission = organization.requestSubmission({
                 free: true,
                 given: this.given,
