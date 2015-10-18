@@ -48,17 +48,9 @@ module.exports = class YouGetWhatYouGive {
 
     constructor(params) {
         this.callback = params.callback;
-        this.highestSwapCount = +process.argv[4] || 0;
         this.organizations = params.organizations;
         this.submissions = params.submissions;
-
-        console.log(`Swap count to beat is ${this.highestSwapCount}`);
-
-        async.timesSeries(+process.argv[3], (n, next) => {
-            console.log(`Starting algorithm iteration ${n + 1} of ${process.argv[3]} total`);
-
-            this.start(next);
-        });
+        this.start();
     }
 
     start(next) {
@@ -157,15 +149,12 @@ module.exports = class YouGetWhatYouGive {
 
             // Repayments
             (next) => {
-                console.log('Repayments');
                 _.each(config.sourcesToRepay, (sourceObj) => {
                     let repayedCount = 0;
 
                     let organization = _.find(this.organizations, (organization) => {
                         return sourceObj.source === organization.sources[0];
                     });
-
-                    console.log('Repaying ' + sourceObj.name);
 
                     // Source unsourced submissions, from the recipient's suppression list
                     _.each(this.submissions.hashes, (submission) => {
@@ -192,7 +181,11 @@ module.exports = class YouGetWhatYouGive {
 
             // Destroy remaining unsourced submissions
             (next) => {
-                console.log('Destroying unsourced submissions');
+                if (!config.destroyUnsourcedSubmissions) {
+                    next();
+                    return;
+                }
+
                 let indexesToRemove = [];
 
                 _.each(this.submissions.hashes, (submission, index) => {
@@ -210,14 +203,17 @@ module.exports = class YouGetWhatYouGive {
 
             // Honorable sacrifice
             (next) => {
-                console.log('Honorable sacrifice');
                 let sacrificers = _.filter(
                     this.organizations,
                     (organization) => _.includes(config.sourcesToSacrifice, organization.sources[0])
                 );
 
+                if (sacrificers.length === 0) {
+                    next();
+                    return;
+                }
+
                 _.each(sacrificers, (sacrificer) => {
-                    console.log(sacrificer.name);
                     sacrificer.sacrificing = true;
 
                     // Remove all references to sourceObjects
@@ -231,7 +227,7 @@ module.exports = class YouGetWhatYouGive {
 
                     });
 
-                    console.log(`Removed a source from ${count} submissions.`);
+                    console.log(`${sacrificer.name} sacrificed a source from ${count} submissions.`);
                 });
 
                 next();
@@ -271,17 +267,10 @@ module.exports = class YouGetWhatYouGive {
                 this.distributeUnsourcedSubmissions(next);
             },
 
-            // Save, if swap count is higher than a previous iteration
+            // Save
             (next) => {
                 let count = this.getSwapCount();
-                if (this.highestSwapCount < count) {
-                    console.log(`:D The new count (${count}) is larger than the existing count (${this.highestSwapCount}).`);
-                    this.highestSwapCount = count;
-                } else {
-                    console.log(`¯\\_(ツ)_/¯ The new count (${count}) is not larger than the existing count (${this.highestSwapCount}).`);
-                    next();
-                    return;
-                }
+                console.log(`${count} names were swapped!`);
 
                 console.log('Saving hashes for each organization');
                 _.each(this.organizations, (organization) => {
@@ -301,17 +290,13 @@ module.exports = class YouGetWhatYouGive {
                 let summary = this.getSummary();
                 fs.writeFileSync(path.join(__dirname, `../../output/summary.csv`), summary);
 
-                console.log('-------');
-                console.log(summary);
-                console.log('-------');
-
                 next();
             },
         ], next);
     }
 
     swap(next) {
-        console.log('Starting swap!');
+        console.log('Starting swap');
         async.forever((next) => {
             let success = false;
 
@@ -360,13 +345,13 @@ module.exports = class YouGetWhatYouGive {
 
             next(!success);
         }, () => {
-            console.log('Trading has halted');
+            console.log('Trading has completed');
             next();
         });
     }
 
     distributeUnsourcedSubmissions(next) {
-        console.log('Distributing free submissions');
+        console.log('Distributing unsourced submissions');
         let validOrganizations = _.filter(this.organizations, (organization) => !organization.sacrificing);
 
         async.forever((next) => {
@@ -381,7 +366,6 @@ module.exports = class YouGetWhatYouGive {
 
             // Stop when an organization has been repayed
             if (organization.received.length >= organization.sourced.length) {
-                console.log(organization.name + ' is bowing out.');
                 _.pull(validOrganizations, organization);
                 next();
                 return;
@@ -393,7 +377,6 @@ module.exports = class YouGetWhatYouGive {
             });
 
             if (!submission) {
-                console.log(organization.name + ' is bowing out.');
                 _.pull(validOrganizations, organization);
                 next();
                 return;
