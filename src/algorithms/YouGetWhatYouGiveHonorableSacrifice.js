@@ -150,19 +150,7 @@ module.exports = class YouGetWhatYouGive {
             // Sort submissions by eligibility
             // Most common to most rare
             (next) => {
-                this.submissions.hashes.sort((a, b) => {
-                    let difference = a.eligible.length - b.eligible.length;
-
-                    // if (difference === 0) {
-                    //     difference =
-                    //         _.sum(b.eligible, organization => organization.sourced.length)
-                    //         -
-                    //         _.sum(a.eligible, organization => organization.sourced.length)
-                    //         ;
-                    // }
-
-                    return difference;
-                });
+                this.submissions.hashes.sort((a, b) => a.eligible.length - b.eligible.length);
 
                 next();
             },
@@ -170,12 +158,14 @@ module.exports = class YouGetWhatYouGive {
             // Repayments
             (next) => {
                 console.log('Repayments');
-                _.each(config.sourcesToRepay, (amount, source) => {
+                _.each(config.sourcesToRepay, (sourceObj) => {
                     let repayedCount = 0;
 
                     let organization = _.find(this.organizations, (organization) => {
-                        return source === organization.sources[0];
+                        return sourceObj.source === organization.sources[0];
                     });
+
+                    console.log('Repaying ' + sourceObj.name);
 
                     // Source unsourced submissions, from the recipient's suppression list
                     _.each(this.submissions.hashes, (submission) => {
@@ -189,7 +179,7 @@ module.exports = class YouGetWhatYouGive {
                             repayedCount++;
                         }
 
-                        if (amount <= repayedCount) {
+                        if (sourceObj.amount <= repayedCount) {
                             return false;
                         }
                     });
