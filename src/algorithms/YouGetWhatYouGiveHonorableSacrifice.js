@@ -273,104 +273,12 @@ module.exports = class YouGetWhatYouGive {
 
             // Swap V2
             (next) => {
-                console.log('Starting swap!');
-                async.forever((next) => {
-                    let success = false;
-
-                    let owedOrganizations = this.getSortedListOfOwedOrganizations();
-                    let givingOrganizations = this.getListOfGivingOrganizations();
-
-                    _.each(owedOrganizations, (owedOrganization) => {
-                        // Find the most common submission
-                        let mostCommonSubmission;
-                        let mostCommonSubmissionOwner;
-                        _.each(givingOrganizations, (givingOrganization) => {
-                            let submission = owedOrganization.requestSubmission({
-                                from: givingOrganization,
-                                given: this.given,
-                            });
-
-                            if (
-                                submission
-                                &&
-                                (
-                                    !mostCommonSubmission
-                                    ||
-                                    mostCommonSubmission.eligible.length > submission.eligible.length
-                                )
-                            ) {
-                                mostCommonSubmission = submission;
-                                mostCommonSubmissionOwner = givingOrganization;
-                            }
-                        });
-
-                        if (mostCommonSubmission) {
-                            mostCommonSubmissionOwner.giveSubmission({
-                                given: this.given,
-                                submission: mostCommonSubmission,
-                                to: owedOrganization,
-                            });
-
-                            success = true;
-                        }
-
-                        // If there was a match, break the loop
-                        if (success) {
-                            return false;
-                        }
-                    });
-
-                    next(!success);
-                }, () => {
-                    console.log('Trading has halted');
-                    next();
-                });
+                this.swap(next);
             },
 
             // Distributing free submissions
             (next) => {
-                console.log('Distributing free submissions');
-                let validOrganizations = _.filter(this.organizations, (organization) => !organization.sacrificing);
-
-                async.forever((next) => {
-                    // Check if every organization has bounced
-                    if (_.isEmpty(validOrganizations)) {
-                        next(1);
-                        return;
-                    }
-
-                    // Find the organization who has taken the least free submissions
-                    let organization = _.min(validOrganizations, organization => organization.freeCount);
-
-                    // Stop when an organization has been repayed
-                    if (organization.received.length >= organization.sourced.length) {
-                        console.log(organization.name + ' is bowing out.');
-                        _.pull(validOrganizations, organization);
-                        next();
-                        return;
-                    }
-
-                    let submission = organization.requestSubmission({
-                        free: true,
-                        given: this.given,
-                    });
-
-                    if (!submission) {
-                        console.log(organization.name + ' is bowing out.');
-                        _.pull(validOrganizations, organization);
-                        next();
-                        return;
-                    }
-
-                    organization.takeFreeSubmission({
-                        given: this.given,
-                        submission: submission,
-                    });
-
-                    next();
-                }, (err) => {
-                    next();
-                });
+                this.distributeUnsourcedSubmissions(next);
             },
 
             // Save, if swap count is higher than a previous iteration
@@ -410,6 +318,106 @@ module.exports = class YouGetWhatYouGive {
                 next();
             },
         ], next);
+    }
+
+    swap(next) {
+        console.log('Starting swap!');
+        async.forever((next) => {
+            let success = false;
+
+            let owedOrganizations = this.getSortedListOfOwedOrganizations();
+            let givingOrganizations = this.getListOfGivingOrganizations();
+
+            _.each(owedOrganizations, (owedOrganization) => {
+                // Find the most common submission
+                let mostCommonSubmission;
+                let mostCommonSubmissionOwner;
+                _.each(givingOrganizations, (givingOrganization) => {
+                    let submission = owedOrganization.requestSubmission({
+                        from: givingOrganization,
+                        given: this.given,
+                    });
+
+                    if (
+                        submission
+                        &&
+                        (
+                            !mostCommonSubmission
+                            ||
+                            mostCommonSubmission.eligible.length > submission.eligible.length
+                        )
+                    ) {
+                        mostCommonSubmission = submission;
+                        mostCommonSubmissionOwner = givingOrganization;
+                    }
+                });
+
+                if (mostCommonSubmission) {
+                    mostCommonSubmissionOwner.giveSubmission({
+                        given: this.given,
+                        submission: mostCommonSubmission,
+                        to: owedOrganization,
+                    });
+
+                    success = true;
+                }
+
+                // If there was a match, break the loop
+                if (success) {
+                    return false;
+                }
+            });
+
+            next(!success);
+        }, () => {
+            console.log('Trading has halted');
+            next();
+        });
+    }
+
+    distributeUnsourcedSubmissions(next) {
+        console.log('Distributing free submissions');
+        let validOrganizations = _.filter(this.organizations, (organization) => !organization.sacrificing);
+
+        async.forever((next) => {
+            // Check if every organization has bounced
+            if (_.isEmpty(validOrganizations)) {
+                next(1);
+                return;
+            }
+
+            // Find the organization who has taken the least free submissions
+            let organization = _.min(validOrganizations, organization => organization.received.length / organization.sourced.length);
+
+            // Stop when an organization has been repayed
+            if (organization.received.length >= organization.sourced.length) {
+                console.log(organization.name + ' is bowing out.');
+                _.pull(validOrganizations, organization);
+                next();
+                return;
+            }
+
+            let submission = organization.requestSubmission({
+                free: true,
+                given: this.given,
+            });
+
+            if (!submission) {
+                console.log(organization.name + ' is bowing out.');
+                _.pull(validOrganizations, organization);
+                next();
+                return;
+            }
+
+            organization.takeFreeSubmission({
+                given: this.given,
+                submission: submission,
+            });
+
+            next();
+        }, (err) => {
+            next();
+        });
     }
 
     getSwapCount() {
