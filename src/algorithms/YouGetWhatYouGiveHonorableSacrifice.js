@@ -272,20 +272,21 @@ module.exports = class YouGetWhatYouGive {
                 let count = this.getSwapCount();
                 console.log(`${count} names were swapped!`);
 
+                let id = 1;
+                let csv = 'id,hash,group\n';
+
                 console.log('Saving hashes for each organization');
                 _.each(this.organizations, (organization) => {
                     if (organization.sacrificing) {
                         return;
                     }
 
-                    let data = '';
-
                     _.each(organization.received, (submission) => {
-                        data += submission.hash + '\n';
+                        csv += `${id++},${submission.hash},${organization.sources[0]}\n`;
                     });
-
-                    fs.writeFileSync(path.join(__dirname, `../../output/hashes-${organization.sources[0]}.csv`), data);
                 });
+
+                fs.writeFileSync(path.join(__dirname, `../../output/hashes.csv`), csv);
 
                 let summary = this.getSummary();
                 fs.writeFileSync(path.join(__dirname, `../../output/summary.csv`), summary);
