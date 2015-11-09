@@ -3,6 +3,7 @@
 // Modules
 const _ = require('lodash');
 const async = require('async');
+const config = require('../../input/config');
 const fs = require('fs');
 const Organization = require('../Organization');
 const path = require('path');
@@ -47,17 +48,9 @@ module.exports = class YouGetWhatYouGive {
 
     constructor(params) {
         this.callback = params.callback;
-        this.highestSwapCount = +process.argv[4] || 0;
         this.organizations = params.organizations;
         this.submissions = params.submissions;
-
-        console.log(`Swap count to beat is ${this.highestSwapCount}`);
-
-        async.timesSeries(+process.argv[3], (n, next) => {
-            console.log(`Starting algorithm iteration ${n + 1} of ${process.argv[3]} total`);
-
-            this.start(next);
-        });
+        this.start();
     }
 
     start(next) {
@@ -76,6 +69,7 @@ module.exports = class YouGetWhatYouGive {
                     organization.freeCount = 0;
                     organization.given = [];
                     organization.received = [];
+                    organization.sourced = [];
                 });
 
                 _.each(this.submissions.hashes, (submission) => {
@@ -103,6 +97,7 @@ module.exports = class YouGetWhatYouGive {
                     _.each(_.keys(submission.sources), (source) => {
                         let organization = sourceMap[source];
                         if (organization) {
+                            organization.sourced.push(submission);
                             submission.sourceObjects.push(organization);
                         }
                     });
@@ -116,6 +111,8 @@ module.exports = class YouGetWhatYouGive {
                 console.log('Finding eligible hashes for each organization');
                 // Creating eligibity arrays
                 _.each(this.organizations, (organization) => {
+                    organization.eligible.free = [];
+
                     _.each(this.organizations, (otherOrganization) => {
                         if (organization === otherOrganization) {
                             return;
@@ -123,14 +120,10 @@ module.exports = class YouGetWhatYouGive {
 
                         organization.eligible[otherOrganization.sources[0]] = [];
                     });
-
-                    organization.eligible.free = [];
                 });
 
                 // Assigning eligiblity to submissions
                 _.each(this.submissions.hashes, (submission) => {
-                    let isFree = submission.sourceObjects.length === 0;
-
                     _.each(this.organizations, (organization) => {
                         // Skip suppressed hashes
                         if (organization.hashes[submission.hash]) {
@@ -139,7 +132,27 @@ module.exports = class YouGetWhatYouGive {
 
                         // Used to determine rarity of submission
                         submission.eligible.push(organization);
+                    });
+                });
 
+                next();
+            },
+
+            // Sort submissions by eligibility
+            // Most common to most rare
+            (next) => {
+                this.submissions.hashes.sort((a, b) => a.eligible.length - b.eligible.length);
+
+                next();
+            },
+
+            // Assigning eligiblity to organizations
+            (next) => {
+                console.log('Assigning eligiblity to organizations');
+                _.each(this.submissions.hashes, (submission) => {
+                    let isFree = submission.sourceObjects.length === 0;
+
+                    _.each(submission.eligible, (organization) => {
                         if (isFree) {
                             organization.eligible.free.push(submission);
                         } else {
@@ -154,138 +167,133 @@ module.exports = class YouGetWhatYouGive {
                     });
                 });
 
-                console.log('Sorting eligible hashes');
-                _.each(this.organizations, (organization) => {
-                    _.each(organization.eligible, (eligible) => {
-                        eligible.sort((a, b) => {
-                            return a.eligible.length - b.eligible.length;
-                        });
-                    });
-                });
-
                 next();
             },
 
-            // Swap
+            // Swap V2
             (next) => {
-                console.log('Starting swap!');
-                async.forever((next) => {
-                    let fails = 0;
-
-                    let givingOrganizations = this.getShuffledListOfGivingOrganizations();
-
-                    _.each(givingOrganizations, (givingOrganization) => {
-                        let owedOrganizations = this.getShuffledListOfOwedOrganizations({
-                            except: givingOrganization,
-                        });
-
-                        let success = false;
-
-                        _.each(owedOrganizations, (owedOrganization) => {
-                            let desiredSubmission = owedOrganization.requestSubmission({
-                                from: givingOrganization,
-                                given: this.given,
-                            });
-
-                            if (desiredSubmission) {
-                                givingOrganization.giveSubmission({
-                                    given: this.given,
-                                    submission: desiredSubmission,
-                                    to: owedOrganization,
-                                });
-
-                                success = true;
-                                _.pull(owedOrganizations, owedOrganization);
-
-                                return false;
-                            }
-                        });
-
-                        if (!success) {
-                            fails++;
-                        }
-                    });
-
-                    if (fails === givingOrganizations.length) {
-                        next(1);
-                    } else {
-                        next();
-                    }
-                }, () => {
-                    console.log('Trading has halted');
-                    next();
-                });
+                this.swap(next);
             },
 
             // Distributing free submissions
             (next) => {
-                console.log('Distributing free submissions');
-                let freeCount = 0;
-                let givenCount = _.size(this.given);
-
-                async.forever((next) => {
-                    let organization = _.max(this.organizations, (organization) => {
-                        let freeShare = (organization.freeCount / freeCount) || 0;
-                        let givenShare = organization.given.length / givenCount;
-                        return givenShare - freeShare;
-                    });
-
-                    let submission = organization.requestSubmission({
-                        free: true,
-                        given: this.given,
-                    });
-
-                    if (!submission) {
-                        next(1);
-                        return;
-                    }
-
-                    organization.takeFreeSubmission({
-                        given: this.given,
-                        submission: submission,
-                    });
-
-                    freeCount++;
-
-                    next();
-                }, (err) => {
-                    next();
-                });
+                this.distributeUnsourcedSubmissions(next);
             },
 
-            // Save, if swap count is higher than a previous iteration
+            // Save
             (next) => {
                 let count = this.getSwapCount();
-                if (this.highestSwapCount < count) {
-                    console.log(`:D The new count (${count}) is larger than the existing count (${this.highestSwapCount}).`);
-                    this.highestSwapCount = count;
-                } else {
-                    console.log(`:) The new count (${count}) is smaller than the existing count (${this.highestSwapCount}).`);
-                    next();
-                    return;
-                }
+                console.log(`${count} names were swapped!`);
+
+                let id = 1;
+                let csv = 'id,hash,group\n';
 
                 console.log('Saving hashes for each organization');
                 _.each(this.organizations, (organization) => {
-                    let data = '';
-
                     _.each(organization.received, (submission) => {
-                        data += submission.hash + '\n';
+                        csv += `${id++},${submission.hash},${organization.sources[0]}\n`;
                     });
-
-                    fs.writeFileSync(path.join(__dirname, `../../output/hashes-${organization.sources[0]}.csv`), data);
                 });
+
+                fs.writeFileSync(path.join(__dirname, `../../output/hashes.csv`), csv);
 
                 let summary = this.getSummary();
                 fs.writeFileSync(path.join(__dirname, `../../output/summary.csv`), summary);
 
-                console.log('-------');
-                console.log(summary);
-                console.log('-------');
-
                 next();
             },
         ], next);
+    }
+
+    swap(next) {
+        console.log('Starting swap');
+        async.forever((next) => {
+            let success = false;
+
+            let owedOrganizations = this.getSortedListOfOwedOrganizations();
+            let givingOrganizations = this.getListOfGivingOrganizations();
+
+            _.each(owedOrganizations, (owedOrganization) => {
+                // Find the most common submission
+                let mostCommonSubmission;
+                let mostCommonSubmissionOwner;
+                _.each(givingOrganizations, (givingOrganization) => {
+                    let submission = owedOrganization.requestSubmission({
+                        from: givingOrganization,
+                        given: this.given,
+                    });
+
+                    if (
+                        submission
+                        &&
+                        (
+                            !mostCommonSubmission
+                            ||
+                            mostCommonSubmission.eligible.length > submission.eligible.length
+                        )
+                    ) {
+                        mostCommonSubmission = submission;
+                        mostCommonSubmissionOwner = givingOrganization;
+                    }
+                });
+
+                if (mostCommonSubmission) {
+                    mostCommonSubmissionOwner.giveSubmission({
+                        given: this.given,
+                        submission: mostCommonSubmission,
+                        to: owedOrganization,
+                    });
+
+                    success = true;
+                }
+
+                // If there was a match, break the loop
+                if (success) {
+                    return false;
+                }
+            });
+
+            next(!success);
+        }, () => {
+            console.log('Trading has completed');
+            next();
+        });
+    }
+
+    distributeUnsourcedSubmissions(next) {
+        console.log('Distributing unsourced submissions');
+        let organizations = _.clone(this.organizations);
+
+        async.forever((next) => {
+            // Check if every organization has bounced
+            if (_.isEmpty(organizations)) {
+                next(1);
+                return;
+            }
+
+            // Find the organization who has taken the least free submissions
+            let organization = _.min(organizations, organization => organization.received.length / organization.sourced.length);
+
+            let submission = organization.requestSubmission({
+                free: true,
+                given: this.given,
+            });
+
+            if (!submission) {
+                _.pull(organizations, organization);
+                next();
+                return;
+            }
+
+            organization.takeFreeSubmission({
+                given: this.given,
+                submission: submission,
+            });
+
+            next();
+        }, (err) => {
+            next();
+        });
     }
 
     getSwapCount() {
@@ -295,33 +303,42 @@ module.exports = class YouGetWhatYouGive {
     }
 
     getSummary() {
-        let summary = 'ORG,SWAPPED,UNSOURCED,TOTAL\n';
+        let summary = 'Organization,Sourced,Received,Percent,(Sourced),(Unsourced)\n';
         _.each(this.organizations, (organization) => {
-            let keyCount = organization.received.length;
-            summary += `${organization.sources[0]},${keyCount - organization.freeCount},${organization.freeCount},${keyCount}\n`;
+            let name = organization.name;
+            let sourced = organization.sourced.length;
+            let receivedTotal = organization.received.length;
+            let percent = ((receivedTotal / sourced) * 100).toFixed(2);
+            let receivedUnsourced = organization.freeCount;
+            let receivedSourced = receivedTotal - receivedUnsourced;
+            summary += `${name},${sourced},${receivedTotal},${percent}%,${receivedSourced},${receivedUnsourced}\n`;
         });
 
         return summary;
     }
 
-    getShuffledListOfGivingOrganizations() {
-        return _.shuffle(_.filter(this.organizations, (organization) => {
-            return (
-                organization.given.length <= organization.received.length
-            );
-        }));
+    getListOfGivingOrganizations() {
+        return _.filter(this.organizations, (organization) => {
+            return organization.given.length <= organization.received.length;
+        });
     }
 
-    getShuffledListOfOwedOrganizations(params) {
+    getSortedListOfOwedOrganizations() {
         return _.filter(this.organizations, (organization) => {
             return (
-                organization !== params.except
-                &&
                 organization.given.length >= organization.received.length
             );
         }).sort((a, b) => {
+            // Sort those who have given more than they've received first
             let scoreA = a.given.length - a.received.length;
             let scoreB = b.given.length - b.received.length;
+
+            // Sort those who have more unpayed sourced actions first
+            if (scoreA === scoreB) {
+                scoreA = a.sourced.length - a.received.length;
+                scoreB = b.sourced.length - b.received.length;
+            }
+
             return scoreB - scoreA;
         });
     }
