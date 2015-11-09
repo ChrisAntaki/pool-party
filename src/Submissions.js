@@ -1,8 +1,11 @@
 'use strict';
+
+// Modules
 const _ = require('lodash');
 const fs = require('fs');
 const parse = require('csv-parse');
 
+// Class
 module.exports = class Submissions {
 
     constructor(params) {

@@ -1,7 +1,7 @@
 'use strict';
 
-// Modules
 const async = require('async');
+const config = require('./src/config');
 const fs = require('fs');
 const Organization = require('./src/Organization');
 const parse = require('csv-parse');
@@ -9,12 +9,11 @@ const path = require('path');
 const Submissions = require('./src/Submissions');
 
 // Flow
-const config = require('./input/config.json');
 let storage = {};
 async.series([
     // Verify CLI argument
     (next) => {
-        if (!process.argv[2]) {
+        if (!config.get('algorithm')) {
             next('Please enter an algorithm as a CLI argument. Ex: YouGetWhatYouGive')
         } else {
             next();
@@ -24,7 +23,7 @@ async.series([
     // Organizations
     (next) => {
         storage.organizations = [];
-        async.eachSeries(config.organizations, (organizationJSON, next) => {
+        async.eachSeries(config.get('organizations'), (organizationJSON, next) => {
             console.log(`Collecting suppressed hashes for ${organizationJSON.name}`);
             const organization = new Organization({
                 callback: next,
@@ -46,7 +45,7 @@ async.series([
 
     // Swap
     (next) => {
-        const Algorithm = require('./src/algorithms/' + process.argv[2]);
+        const Algorithm = require('./src/algorithms/' + config.get('algorithm'));
         new Algorithm({
             callback: next,
             organizations: storage.organizations,

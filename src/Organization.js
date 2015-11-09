@@ -5,6 +5,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const parse = require('csv-parse');
 
+// Class
 module.exports = class Organization {
 
         constructor(params) {
