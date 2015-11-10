@@ -49,7 +49,7 @@ Organization.prototype.takeFreeSubmission = function takeFreeSubmission(params) 
 }
 
 // Class
-module.exports = class YouGetWhatYouGive {
+module.exports = class YouGetWhatYouSource {
 
     constructor(params) {
         this.callback = params.callback;
@@ -63,7 +63,6 @@ module.exports = class YouGetWhatYouGive {
             // Modifying organization and submissions objects
             (next) => {
                 _.each(this.organizations, (organization) => {
-                    organization.bailed = false;
                     organization.eligible = {};
                     organization.freeCount = 0;
                     organization.givenCount = 0;
@@ -171,6 +170,20 @@ module.exports = class YouGetWhatYouGive {
                 next();
             },
 
+            // Show amount of eligible hashes per organization
+            (next) => {
+                console.log('Eligible hashes per organization:');
+                _.each(this.organizations, (organization) => {
+                    let count = _.sum(organization.eligible, (group) => {
+                        return group.length;
+                    });
+
+                    console.log(`${organization.source}:${count}`);
+                });
+
+                next();
+            },
+
             // Swap
             (next) => {
                 this.swap(next);
@@ -246,9 +259,6 @@ module.exports = class YouGetWhatYouGive {
                 // If there was a match, break the loop
                 if (success) {
                     return false;
-                } else if (!owedOrganization.bailed) {
-                    owedOrganization.bailed = true;
-                    console.log(`${owedOrganization.source} bailed with ${owedOrganization.received.length} received`);
                 }
             });
 
@@ -284,7 +294,6 @@ module.exports = class YouGetWhatYouGive {
             });
 
             if (!submission) {
-                console.log(`${organization.source} bailed with ${organization.received.length} received`);
                 _.pull(organizations, organization);
                 next();
                 return;
