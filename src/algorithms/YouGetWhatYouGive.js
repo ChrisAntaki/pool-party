@@ -3,18 +3,21 @@
 // Modules
 const _ = require('lodash');
 const async = require('async');
-const config = require('../../input/config');
+const config = require('../config');
 const fs = require('fs');
 const Organization = require('../Organization');
 const path = require('path');
 const Submissions = require('../Submissions');
 
+// Settings
+const cordiality = +config.get('cordiality');
+
 // Modifications
-Organization.prototype.requestSubmission = function requestSubmission (params) {
-    let eligible = params.free ? this.eligible.free : this.eligible[params.from.sources[0]];
+Organization.prototype.requestSubmission = function requestSubmission(params) {
+    let eligible = params.free ? this.eligible.free : this.eligible[params.from.source];
     let lostIndexes = [];
     let submission = _.find(eligible, (submission, index) => {
-        if (!params.given[submission.hash]) {
+        if (submission.givenCount < cordiality) {
             return true;
         } else {
             lostIndexes.push(index);
@@ -29,18 +32,32 @@ Organization.prototype.requestSubmission = function requestSubmission (params) {
     return submission;
 }
 
-Organization.prototype.giveSubmission = function giveSubmission (params) {
+Organization.prototype.giveSubmission = function giveSubmission(params) {
     let submission = params.submission;
-    params.given[submission.hash] = submission;
-    params.to.received.push(submission);
-    this.given.push(submission);
+    params.to.received.unshift(submission);
+    submission.givenCount++;
+    this.givenCount++;
+
+    if (params.to.eligible[this.source][0] === submission) {
+        params.to.eligible[this.source].shift();
+    } else {
+        console.log('Mismatch @ sourced!');
+        process.exit();
+    }
 }
 
-Organization.prototype.takeFreeSubmission = function takeFreeSubmission (params) {
+Organization.prototype.takeFreeSubmission = function takeFreeSubmission(params) {
     let submission = params.submission;
-    params.given[submission.hash] = submission;
-    this.received.push(submission);
+    submission.givenCount++;
+    this.received.unshift(submission);
     this.freeCount++;
+
+    if (this.eligible.free[0] === submission) {
+        this.eligible.free.shift();
+    } else {
+        console.log('Mismatch @ free!');
+        process.exit();
+    }
 }
 
 // Class
@@ -55,26 +72,21 @@ module.exports = class YouGetWhatYouGive {
 
     start(next) {
         async.series([
-            // Resetting instance variables
-            (next) => {
-                this.given = {};
-
-                next();
-            },
-
             // Modifying organization and submissions objects
             (next) => {
                 _.each(this.organizations, (organization) => {
                     organization.eligible = {};
                     organization.freeCount = 0;
-                    organization.given = [];
+                    organization.givenCount = 0;
                     organization.received = [];
+                    organization.source = organization.sources[0];
                     organization.sourced = [];
                 });
 
                 _.each(this.submissions.hashes, (submission) => {
                     // Used to determine rarity of submission
                     submission.eligible = [];
+                    submission.givenCount = 0;
                 });
 
                 next();
@@ -118,7 +130,7 @@ module.exports = class YouGetWhatYouGive {
                             return;
                         }
 
-                        organization.eligible[otherOrganization.sources[0]] = [];
+                        organization.eligible[otherOrganization.source] = [];
                     });
                 });
 
@@ -161,7 +173,7 @@ module.exports = class YouGetWhatYouGive {
                                     return;
                                 }
 
-                                organization.eligible[otherOrganization.sources[0]].push(submission);
+                                organization.eligible[otherOrganization.source].push(submission);
                             });
                         }
                     });
@@ -191,7 +203,7 @@ module.exports = class YouGetWhatYouGive {
                 console.log('Saving hashes for each organization');
                 _.each(this.organizations, (organization) => {
                     _.each(organization.received, (submission) => {
-                        csv += `${id++},${submission.hash},${organization.sources[0]}\n`;
+                        csv += `${id++},${submission.hash},${organization.source}\n`;
                     });
                 });
 
@@ -220,15 +232,11 @@ module.exports = class YouGetWhatYouGive {
                 _.each(givingOrganizations, (givingOrganization) => {
                     let submission = owedOrganization.requestSubmission({
                         from: givingOrganization,
-                        given: this.given,
                     });
 
                     if (
-                        submission
-                        &&
-                        (
-                            !mostCommonSubmission
-                            ||
+                        submission &&
+                        (!mostCommonSubmission ||
                             mostCommonSubmission.eligible.length > submission.eligible.length
                         )
                     ) {
@@ -239,7 +247,6 @@ module.exports = class YouGetWhatYouGive {
 
                 if (mostCommonSubmission) {
                     mostCommonSubmissionOwner.giveSubmission({
-                        given: this.given,
                         submission: mostCommonSubmission,
                         to: owedOrganization,
                     });
@@ -276,7 +283,6 @@ module.exports = class YouGetWhatYouGive {
 
             let submission = organization.requestSubmission({
                 free: true,
-                given: this.given,
             });
 
             if (!submission) {
@@ -286,7 +292,6 @@ module.exports = class YouGetWhatYouGive {
             }
 
             organization.takeFreeSubmission({
-                given: this.given,
                 submission: submission,
             });
 
@@ -319,19 +324,19 @@ module.exports = class YouGetWhatYouGive {
 
     getListOfGivingOrganizations() {
         return _.filter(this.organizations, (organization) => {
-            return organization.given.length <= organization.received.length;
+            return organization.givenCount <= organization.received.length;
         });
     }
 
     getSortedListOfOwedOrganizations() {
         return _.filter(this.organizations, (organization) => {
             return (
-                organization.given.length >= organization.received.length
+                organization.givenCount >= organization.received.length
             );
         }).sort((a, b) => {
             // Sort those who have given more than they've received first
-            let scoreA = a.given.length - a.received.length;
-            let scoreB = b.given.length - b.received.length;
+            let scoreA = a.givenCount - a.received.length;
+            let scoreB = b.givenCount - b.received.length;
 
             // Sort those who have more unpayed sourced actions first
             if (scoreA === scoreB) {
