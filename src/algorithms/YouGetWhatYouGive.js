@@ -34,30 +34,18 @@ Organization.prototype.requestSubmission = function requestSubmission(params) {
 
 Organization.prototype.giveSubmission = function giveSubmission(params) {
     let submission = params.submission;
-    params.to.received.unshift(submission);
+    params.to.eligible[this.source].shift();
+    params.to.received.push(submission);
     submission.givenCount++;
     this.givenCount++;
-
-    if (params.to.eligible[this.source][0] === submission) {
-        params.to.eligible[this.source].shift();
-    } else {
-        console.log('Mismatch @ sourced!');
-        process.exit();
-    }
 }
 
 Organization.prototype.takeFreeSubmission = function takeFreeSubmission(params) {
     let submission = params.submission;
     submission.givenCount++;
-    this.received.unshift(submission);
+    this.eligible.free.shift();
     this.freeCount++;
-
-    if (this.eligible.free[0] === submission) {
-        this.eligible.free.shift();
-    } else {
-        console.log('Mismatch @ free!');
-        process.exit();
-    }
+    this.received.push(submission);
 }
 
 // Class
