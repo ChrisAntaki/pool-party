@@ -1,1 +1,1 @@
-node --max-old-space-size=10240 . --algorithm YouGetWhatYouGive --cordiality 1
+node --max-old-space-size=10240 . --algorithm CappedSourceage --cordiality 3
