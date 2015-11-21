@@ -4,6 +4,7 @@
 const _ = require('lodash');
 const fs = require('fs');
 const parse = require('csv-parse');
+const crypto = require('crypto');
 
 // Class
 module.exports = class Submissions {
@@ -32,16 +33,22 @@ module.exports = class Submissions {
 
         parser.on('readable', () => {
             for (let row; row = parser.read();) {
-                let hash = submissions[row.hash];
+                const email = row.email.trim().toUpperCase();
+                const hash = crypto.createHash('md5').update(email).digest('hex');
+                let submission = submissions[hash];
 
-                if (!hash) {
-                    hash = submissions[row.hash] = {
-                        hash: row.hash,
+                if (!submission) {
+                    submission = submissions[hash] = {
+                        hash: hash,
+                        row: row,
                         sources: {},
                     };
                 }
 
-                hash.sources[row.source] = true;
+                submission.sources[row.source] = true;
+
+                delete row.created_at;
+                delete row.source;
             }
         });
 

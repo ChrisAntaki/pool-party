@@ -28,7 +28,6 @@ async.series([
             const organization = new Organization({
                 callback: next,
                 json: organizationJSON,
-                path: path.join(__dirname, `input/org-${organizationJSON.sources[0]}.csv`),
             });
             storage.organizations.push(organization);
         }, next);

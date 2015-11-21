@@ -5,6 +5,7 @@ const _ = require('lodash');
 const async = require('async');
 const config = require('../config');
 const fs = require('fs');
+const stringify = require('csv-stringify');
 const Organization = require('../Organization');
 const path = require('path');
 const Submissions = require('../Submissions');
@@ -97,12 +98,43 @@ module.exports = class YouGetWhatYouSource {
                     _.each(_.keys(submission.sources), (source) => {
                         let organization = sourceMap[source];
                         if (organization) {
+                            organization.hashes[submission.hash] = true;
                             organization.sourced.push(submission);
                             submission.sourceObjects.push(organization);
                         }
                     });
                 });
 
+                // Remove duplicates
+                _.each(this.submissions.hashes, (submission) => {
+                    submission.sourceObjects = _.uniq(submission.sourceObjects);
+                });
+                _.each(this.organizations, (organization) => {
+                    organization.sourced = _.uniq(organization.sourced);
+                });
+
+                next();
+            },
+
+            // Saving sourced signatures
+            (next) => {
+                async.eachSeries(this.organizations, (organization, next) => {
+                    const sourced = _.map(organization.sourced, submission => submission.row);
+                    stringify(sourced, {
+                        header: true,
+                        quoted: true,
+                    }, (err, csv) => {
+                        fs.writeFileSync(path.join(__dirname, `../../output/${organization.source}-own.csv`), csv);
+                        next();
+                    });
+                }, next);
+            },
+
+            // Removing organizations that aren't swapping
+            (next) => {
+                this.organizations = _.filter(this.organizations, (organization) => {
+                    return organization.swapping;
+                });
                 next();
             },
 
@@ -161,6 +193,10 @@ module.exports = class YouGetWhatYouSource {
                                     return;
                                 }
 
+                                if (!otherOrganization.swapping) {
+                                    return;
+                                }
+
                                 organization.eligible[otherOrganization.source].push(submission);
                             });
                         }
@@ -174,11 +210,10 @@ module.exports = class YouGetWhatYouSource {
             (next) => {
                 console.log('Eligible hashes per organization:');
                 _.each(this.organizations, (organization) => {
-                    let count = _.sum(organization.eligible, (group) => {
+                    let eligibleCount = _.sum(organization.eligible, (group) => {
                         return group.length;
                     });
-
-                    console.log(`${organization.source}:${count}`);
+                    console.log(`${organization.source} eligible hashes: ${eligibleCount}`);
                 });
 
                 next();
@@ -199,22 +234,20 @@ module.exports = class YouGetWhatYouSource {
                 let count = this.getSwapCount();
                 console.log(`${count} names were swapped!`);
 
-                let id = 1;
-                let csv = 'id,hash,group\n';
-
-                console.log('Saving hashes for each organization');
-                _.each(this.organizations, (organization) => {
-                    _.each(organization.received, (submission) => {
-                        csv += `${id++},${submission.hash},${organization.source}\n`;
-                    });
-                });
-
-                fs.writeFileSync(path.join(__dirname, `../../output/hashes.csv`), csv);
-
                 let summary = this.getSummary();
                 fs.writeFileSync(path.join(__dirname, `../../output/summary.csv`), summary);
 
-                next();
+                console.log('Saving hashes for each organization');
+                async.eachSeries(this.organizations, (organization, next) => {
+                    const received = _.map(organization.received, submission => submission.row);
+                    stringify(received, {
+                        header: true,
+                        quoted: true,
+                    }, (err, csv) => {
+                        fs.writeFileSync(path.join(__dirname, `../../output/${organization.source}-swapped.csv`), csv);
+                        next();
+                    });
+                }, next);
             },
         ], next);
     }
