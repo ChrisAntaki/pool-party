@@ -18,7 +18,7 @@ Organization.prototype.requestSubmission = function requestSubmission(params) {
     let eligible = params.free ? this.eligible.free : this.eligible[params.from.source];
     let lostIndexes = [];
     let submission = _.find(eligible, (submission, index) => {
-        if (submission.givenCount < cordiality) {
+        if (!this.hashes[submission.hash] && submission.givenCount < cordiality) {
             return true;
         } else {
             lostIndexes.push(index);
@@ -35,6 +35,7 @@ Organization.prototype.requestSubmission = function requestSubmission(params) {
 
 Organization.prototype.giveSubmission = function giveSubmission(params) {
     let submission = params.submission;
+    params.to.hashes[submission.hash] = true;
     params.to.eligible[this.source].shift();
     params.to.received.push(submission);
     submission.givenCount++;
@@ -46,6 +47,7 @@ Organization.prototype.takeFreeSubmission = function takeFreeSubmission(params) 
     submission.givenCount++;
     this.eligible.free.shift();
     this.freeCount++;
+    this.hashes[submission.hash] = true;
     this.received.push(submission);
 }
 
@@ -65,6 +67,7 @@ module.exports = class YouGetWhatYouSource {
             (next) => {
                 _.each(this.organizations, (organization) => {
                     organization.eligible = {};
+                    organization.eligibleCount = 0;
                     organization.freeCount = 0;
                     organization.givenCount = 0;
                     organization.received = [];
@@ -138,7 +141,7 @@ module.exports = class YouGetWhatYouSource {
                 next();
             },
 
-            // Finding eligible hashes for each organization
+            // Assigning eligible organizations to each submission
             (next) => {
                 console.log('Finding eligible hashes for each organization');
                 // Creating eligibity arrays
@@ -178,7 +181,7 @@ module.exports = class YouGetWhatYouSource {
                 next();
             },
 
-            // Assigning eligiblity to organizations
+            // Assigning eligible submissions to organizations
             (next) => {
                 console.log('Assigning eligiblity to organizations');
                 _.each(this.submissions.hashes, (submission) => {
@@ -206,14 +209,38 @@ module.exports = class YouGetWhatYouSource {
                 next();
             },
 
+            // Modifying eligibility based on organizational state preference
+            (next) => {
+                console.log('Modifying eligibility based on organizational state preference');
+                _.each(this.organizations, (organization) => {
+                    if (!organization.states || organization.states.length === 0) {
+                        return;
+                    }
+
+                    _.each(organization.eligible, (submissions) => {
+                        submissions.sort((submissionA, submissionB) => {
+                            const inStateA = +_.includes(organization.states, submissionA.row.state);
+                            const inStateB = +_.includes(organization.states, submissionB.row.state);
+                            return inStateB - inStateA;
+                        });
+                    });
+                });
+
+                next();
+            },
+
             // Show amount of eligible hashes per organization
             (next) => {
                 console.log('Eligible hashes per organization:');
                 _.each(this.organizations, (organization) => {
-                    let eligibleCount = _.sum(organization.eligible, (group) => {
-                        return group.length;
+                    const eligible = {};
+                    _.each(organization.eligible, (group) => {
+                        _.each(group, (submission) => {
+                            eligible[submission.hash] = true;
+                        });
                     });
-                    console.log(`${organization.source} eligible hashes: ${eligibleCount}`);
+                    organization.eligibleCount = _.size(eligible);
+                    console.log(`${organization.source} eligible hashes: ${organization.eligibleCount}`);
                 });
 
                 next();
@@ -349,15 +376,16 @@ module.exports = class YouGetWhatYouSource {
     }
 
     getSummary() {
-        let summary = 'Organization,Sourced,Received,Percent,(Sourced),(Unsourced)\n';
+        let summary = 'Organization,Sourced,Eligible,Received,Percent,(Sourced),(Unsourced)\n';
         _.each(this.organizations, (organization) => {
-            let name = organization.name;
-            let sourced = organization.sourced.length;
-            let receivedTotal = organization.received.length;
-            let percent = ((receivedTotal / sourced) * 100).toFixed(2);
-            let receivedUnsourced = organization.freeCount;
-            let receivedSourced = receivedTotal - receivedUnsourced;
-            summary += `${name},${sourced},${receivedTotal},${percent}%,${receivedSourced},${receivedUnsourced}\n`;
+            const eligibleCount = organization.eligibleCount;
+            const name = organization.name;
+            const receivedTotal = organization.received.length;
+            const sourced = organization.sourced.length;
+            const percent = ((receivedTotal / sourced) * 100).toFixed(2);
+            const receivedUnsourced = organization.freeCount;
+            const receivedSourced = receivedTotal - receivedUnsourced;
+            summary += `${name},${sourced},${eligibleCount},${receivedTotal},${percent}%,${receivedSourced},${receivedUnsourced}\n`;
         });
 
         return summary;

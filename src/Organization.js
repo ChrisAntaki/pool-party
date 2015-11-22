@@ -15,6 +15,7 @@ module.exports = class Organization {
             this.params = params;
             this.source = params.json.sources[0];
             this.sources = params.json.sources;
+            this.states = params.json.states;
             this.swapping = params.json.swapping;
 
             // this.collectByStreaming();
