@@ -293,29 +293,41 @@ module.exports = class YouGetWhatYouSource {
             let owedOrganizations = this.getSortedListOfOwedOrganizations();
 
             _.each(owedOrganizations, (owedOrganization) => {
-                // Find the most common submission
+                // Find the best submission
+                // Usually this will be the most common submission
+                // If a group prefers certain states, that distinction will come first though
                 let givingOrganizations = _.without(this.organizations, owedOrganization);
-                let mostCommonSubmission;
-                let mostCommonSubmissionOwner;
+                let bestSubmission;
+                let bestSubmissionOwner;
+                let bestSubmissionFitness;
                 _.each(givingOrganizations, (givingOrganization) => {
                     let submission = owedOrganization.requestSubmission({
                         from: givingOrganization,
                     });
 
+                    let stateFitnessBonus = 0;
+
+                    if (submission && owedOrganization.states) {
+                        if (_.includes(owedOrganization.states, submission.row.state)) {
+                            stateFitnessBonus = 100;
+                        }
+                    }
+
                     if (
                         submission &&
-                        (!mostCommonSubmission ||
-                            mostCommonSubmission.eligible.length > submission.eligible.length
+                        (!bestSubmission ||
+                            bestSubmissionFitness > submission.eligible.length - stateFitnessBonus
                         )
                     ) {
-                        mostCommonSubmission = submission;
-                        mostCommonSubmissionOwner = givingOrganization;
+                        bestSubmission = submission;
+                        bestSubmissionOwner = givingOrganization;
+                        bestSubmissionFitness = bestSubmission.eligible.length - stateFitnessBonus;
                     }
                 });
 
-                if (mostCommonSubmission) {
-                    mostCommonSubmissionOwner.giveSubmission({
-                        submission: mostCommonSubmission,
+                if (bestSubmission) {
+                    bestSubmissionOwner.giveSubmission({
+                        submission: bestSubmission,
                         to: owedOrganization,
                     });
 
