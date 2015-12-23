@@ -73,6 +73,7 @@ module.exports = class YouGetWhatYouSource {
                     organization.received = [];
                     organization.source = organization.sources[0];
                     organization.sourced = [];
+                    organization.swappableSourced = [];
                 });
 
                 _.each(this.submissions.hashes, (submission) => {
@@ -104,6 +105,10 @@ module.exports = class YouGetWhatYouSource {
                             organization.hashes[submission.hash] = true;
                             organization.sourced.push(submission);
                             submission.sourceObjects.push(organization);
+
+                            if (submission.swappable) {
+                                organization.swappableSourced.push(submission);
+                            }
                         }
                     });
                 });
@@ -114,6 +119,7 @@ module.exports = class YouGetWhatYouSource {
                 });
                 _.each(this.organizations, (organization) => {
                     organization.sourced = _.uniq(organization.sourced);
+                    organization.swappableSourced = _.uniq(organization.swappableSourced);
                 });
 
                 next();
@@ -158,7 +164,7 @@ module.exports = class YouGetWhatYouSource {
                 });
 
                 // Assigning eligiblity to submissions
-                _.each(this.submissions.hashes, (submission) => {
+                _.each(this.submissions.swappableHashes, (submission) => {
                     _.each(this.organizations, (organization) => {
                         // Skip suppressed hashes
                         if (organization.hashes[submission.hash]) {
@@ -176,7 +182,7 @@ module.exports = class YouGetWhatYouSource {
             // Sort submissions by eligibility
             // Most common to most rare
             (next) => {
-                this.submissions.hashes.sort((a, b) => a.eligible.length - b.eligible.length);
+                this.submissions.swappableHashes.sort((a, b) => a.eligible.length - b.eligible.length);
 
                 next();
             },
@@ -184,7 +190,7 @@ module.exports = class YouGetWhatYouSource {
             // Assigning eligible submissions to organizations
             (next) => {
                 console.log('Assigning eligiblity to organizations');
-                _.each(this.submissions.hashes, (submission) => {
+                _.each(this.submissions.swappableHashes, (submission) => {
                     let isFree = submission.sourceObjects.length === 0;
 
                     _.each(submission.eligible, (organization) => {
@@ -341,9 +347,9 @@ module.exports = class YouGetWhatYouSource {
             }
 
             // Find the organization who is the farthest from matching their sourced count
-            let organization = _.max(organizations, organization => organization.sourced.length - organization.received.length);
+            let organization = _.max(organizations, organization => organization.swappableSourced.length - organization.received.length);
 
-            if (organization.received.length === organization.sourced.length) {
+            if (organization.received.length === organization.swappableSourced.length) {
                 _.pull(organizations, organization);
                 next();
                 return;
@@ -381,7 +387,7 @@ module.exports = class YouGetWhatYouSource {
             const eligibleCount = organization.eligibleCount;
             const name = organization.name;
             const receivedTotal = organization.received.length;
-            const sourced = organization.sourced.length;
+            const sourced = organization.swappableSourced.length;
             const percent = ((receivedTotal / sourced) * 100).toFixed(2);
             const receivedUnsourced = organization.freeCount;
             const receivedSourced = receivedTotal - receivedUnsourced;
@@ -394,11 +400,11 @@ module.exports = class YouGetWhatYouSource {
     getSortedListOfOwedOrganizations() {
         return _.filter(this.organizations, (organization) => {
             return (
-                organization.sourced.length > organization.received.length
+                organization.swappableSourced.length > organization.received.length
             );
         }).sort((a, b) => {
             // Sort those who've sourced the most first
-            return b.sourced.length - a.sourced.length;
+            return b.swappableSourced.length - a.swappableSourced.length;
         });
     }
 

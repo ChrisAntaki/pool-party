@@ -28,6 +28,10 @@ module.exports = class Submissions {
 
             console.log('Unique submission hashes: ' + this.hashes.length);
 
+            this.swappableHashes = _.filter(this.hashes, submission => submission.swappable);
+
+            console.log('Unique swappable submission hashes: ' + this.swappableHashes.length);
+
             this.params.callback();
         });
 
@@ -42,14 +46,24 @@ module.exports = class Submissions {
                         hash: hash,
                         row: row,
                         sources: {},
+                        swappable: false,
                     };
                 }
 
-                submission.created = new Date(row.created_at);
                 submission.sources[row.source] = true;
+
+                let createdAt = new Date(row.created_at);
+                if (!submission.created || submission.created < createdAt) {
+                    submission.created = createdAt;
+                }
+
+                if (row.swappable === 'consent') {
+                    submission.swappable = true;
+                }
 
                 delete row.created_at;
                 delete row.source;
+                delete row.swappable;
             }
         });
 
