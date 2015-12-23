@@ -45,6 +45,7 @@ module.exports = class Submissions {
                     };
                 }
 
+                submission.created = new Date(row.created_at);
                 submission.sources[row.source] = true;
 
                 delete row.created_at;
