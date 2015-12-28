@@ -1,8 +1,8 @@
 'use strict';
 
 // Modules
-const config = require('nconf');
-const path = require('path');
+let config = require('nconf');
+let path = require('path');
 
 // Multi-source configuration
 config

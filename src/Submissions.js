@@ -1,10 +1,10 @@
 'use strict';
 
 // Modules
-const _ = require('lodash');
-const fs = require('fs');
-const parse = require('csv-parse');
-const crypto = require('crypto');
+let _ = require('lodash');
+let fs = require('fs');
+let parse = require('csv-parse');
+let crypto = require('crypto');
 
 // Class
 module.exports = class Submissions {
@@ -12,33 +12,22 @@ module.exports = class Submissions {
     constructor(params) {
         this.hashes = {};
         this.params = params;
-
-        this.collect();
     }
 
-    collect() {
-        let submissions = {};
+    parse() {
+        return new Promise(this.collect.bind(this));
+    }
 
-        const parser = parse({
-            columns: true,
-        });
+    collect(fulfill, reject) {
+        let input = fs.readFileSync(this.params.path);
+        let options = { columns: true };
 
-        parser.on('finish', () => {
-            this.hashes = _.values(submissions);
+        parse(input, options, (err, rows) => {
+            let submissions = {};
 
-            console.log('Unique submission hashes: ' + this.hashes.length);
-
-            this.swappableHashes = _.filter(this.hashes, submission => submission.swappable);
-
-            console.log('Unique swappable submission hashes: ' + this.swappableHashes.length);
-
-            this.params.callback();
-        });
-
-        parser.on('readable', () => {
-            for (let row; row = parser.read();) {
-                const email = row.email.trim().toUpperCase();
-                const hash = crypto.createHash('md5').update(email).digest('hex');
+            _.each(rows, (row) => {
+                let email = row.email.trim().toUpperCase();
+                let hash = crypto.createHash('md5').update(email).digest('hex');
                 let submission = submissions[hash];
 
                 if (!submission) {
@@ -64,10 +53,18 @@ module.exports = class Submissions {
                 delete row.created_at;
                 delete row.source;
                 delete row.swappable;
-            }
-        });
+            });
 
-        fs.createReadStream(this.params.path).pipe(parser);
+            this.hashes = _.values(submissions);
+
+            console.log('Unique submission hashes: ' + this.hashes.length);
+
+            this.swappableHashes = _.filter(this.hashes, submission => submission.swappable);
+
+            console.log('Unique swappable submission hashes: ' + this.swappableHashes.length);
+
+            fulfill(submissions);
+        });
     }
 
 }

@@ -1,17 +1,17 @@
 'use strict';
 
 // Modules
-const _ = require('lodash');
-const async = require('async');
-const config = require('../config');
-const fs = require('fs');
-const stringify = require('csv-stringify');
-const Organization = require('../Organization');
-const path = require('path');
-const Submissions = require('../Submissions');
+let _ = require('lodash');
+let async = require('async');
+let config = require('../config');
+let fs = require('fs');
+let stringify = require('csv-stringify');
+let Organization = require('../Organization');
+let path = require('path');
+let Submissions = require('../Submissions');
 
 // Settings
-const cordiality = +config.get('cordiality');
+let cordiality = +config.get('cordiality');
 
 // Modifications
 Organization.prototype.requestSubmission = function requestSubmission(params) {
@@ -128,7 +128,7 @@ module.exports = class YouGetWhatYouSource {
             // Saving sourced signatures
             (next) => {
                 async.eachSeries(this.organizations, (organization, next) => {
-                    const sourced = _.map(organization.sourced, submission => submission.row);
+                    let sourced = _.map(organization.sourced, submission => submission.row);
                     stringify(sourced, {
                         header: true,
                         quoted: true,
@@ -225,8 +225,8 @@ module.exports = class YouGetWhatYouSource {
 
                     _.each(organization.eligible, (submissions) => {
                         submissions.sort((submissionA, submissionB) => {
-                            const inStateA = +_.includes(organization.states, submissionA.row.state);
-                            const inStateB = +_.includes(organization.states, submissionB.row.state);
+                            let inStateA = +_.includes(organization.states, submissionA.row.state);
+                            let inStateB = +_.includes(organization.states, submissionB.row.state);
                             return inStateB - inStateA;
                         });
                     });
@@ -237,16 +237,39 @@ module.exports = class YouGetWhatYouSource {
 
             // Show amount of eligible hashes per organization
             (next) => {
-                console.log('Eligible hashes per organization:');
+                console.log('Eligible hashes per organization...');
                 _.each(this.organizations, (organization) => {
-                    const eligible = {};
+                    let eligible = {};
+                    let eligibleInState = {};
+
                     _.each(organization.eligible, (group) => {
                         _.each(group, (submission) => {
                             eligible[submission.hash] = true;
+
+                            if (organization.states.length > 0 && _.includes(organization.states, submission.row.state)) {
+                                eligibleInState[submission.hash] = true;
+                            }
                         });
                     });
+
                     organization.eligibleCount = _.size(eligible);
-                    console.log(`${organization.source} eligible hashes: ${organization.eligibleCount}`);
+                    organization.eligibleInStateCount = _.size(eligibleInState);
+
+                    let message = `Eligible hashes for ${organization.source}: `;
+
+                    if (organization.states.length) {
+                        message +=
+`
+Overall: ${organization.eligibleCount}
+In-state: ${organization.eligibleInStateCount}
+`;
+                    } else {
+                        message +=
+`${organization.eligibleCount}
+`;
+                    }
+
+                    console.log(message);
                 });
 
                 next();
@@ -272,7 +295,7 @@ module.exports = class YouGetWhatYouSource {
 
                 console.log('Saving hashes for each organization');
                 async.eachSeries(this.organizations, (organization, next) => {
-                    const received = _.map(organization.received, submission => submission.row);
+                    let received = _.map(organization.received, submission => submission.row);
                     stringify(received, {
                         header: true,
                         quoted: true,
@@ -396,13 +419,13 @@ module.exports = class YouGetWhatYouSource {
     getSummary() {
         let summary = 'Organization,Sourced,Eligible,Received,Percent,(Sourced),(Unsourced)\n';
         _.each(this.organizations, (organization) => {
-            const eligibleCount = organization.eligibleCount;
-            const name = organization.name;
-            const receivedTotal = organization.received.length;
-            const sourced = organization.swappableSourced.length;
-            const percent = ((receivedTotal / sourced) * 100).toFixed(2);
-            const receivedUnsourced = organization.freeCount;
-            const receivedSourced = receivedTotal - receivedUnsourced;
+            let eligibleCount = organization.eligibleCount;
+            let name = organization.name;
+            let receivedTotal = organization.received.length;
+            let sourced = organization.swappableSourced.length;
+            let percent = ((receivedTotal / sourced) * 100).toFixed(2);
+            let receivedUnsourced = organization.freeCount;
+            let receivedSourced = receivedTotal - receivedUnsourced;
             summary += `${name},${sourced},${eligibleCount},${receivedTotal},${percent}%,${receivedSourced},${receivedUnsourced}\n`;
         });
 
