@@ -3,6 +3,7 @@
 // Modules
 let _ = require('lodash');
 let async = require('async');
+let chalk = require('chalk');
 let config = require('../config');
 let fs = require('fs');
 let stringify = require('csv-stringify');
@@ -87,7 +88,6 @@ module.exports = class YouGetWhatYouSource {
 
             // Assigning submissions to organizations
             (next) => {
-                console.log('Assigning submissions to organizations');
                 let sourceMap = {};
 
                 _.each(this.organizations, (organization) => {
@@ -149,7 +149,6 @@ module.exports = class YouGetWhatYouSource {
 
             // Assigning eligible organizations to each submission
             (next) => {
-                console.log('Finding eligible hashes for each organization');
                 // Creating eligibity arrays
                 _.each(this.organizations, (organization) => {
                     organization.eligible.free = [];
@@ -189,7 +188,6 @@ module.exports = class YouGetWhatYouSource {
 
             // Assigning eligible submissions to organizations
             (next) => {
-                console.log('Assigning eligiblity to organizations');
                 _.each(this.submissions.swappableHashes, (submission) => {
                     let isFree = submission.sourceObjects.length === 0;
 
@@ -217,7 +215,6 @@ module.exports = class YouGetWhatYouSource {
 
             // Modifying eligibility based on organizational state preference
             (next) => {
-                console.log('Modifying eligibility based on organizational state preference');
                 _.each(this.organizations, (organization) => {
                     if (!organization.states || organization.states.length === 0) {
                         return;
@@ -237,7 +234,7 @@ module.exports = class YouGetWhatYouSource {
 
             // Show amount of eligible hashes per organization
             (next) => {
-                console.log('Eligible hashes per organization...');
+                console.log(`Eligible hashes for...`);
                 _.each(this.organizations, (organization) => {
                     let eligible = {};
                     let eligibleInState = {};
@@ -255,19 +252,13 @@ module.exports = class YouGetWhatYouSource {
                     organization.eligibleCount = _.size(eligible);
                     organization.eligibleInStateCount = _.size(eligibleInState);
 
-                    let message = `Eligible hashes for ${organization.source}: `;
+                    let message = `- ${chalk.blue(organization.name)}:\n`;
 
                     if (organization.states.length) {
-                        message +=
-`
-Overall: ${organization.eligibleCount}
-In-state: ${organization.eligibleInStateCount}
-`;
-                    } else {
-                        message +=
-`${organization.eligibleCount}
-`;
+                        message += `    Geolocated: ${chalk.green(organization.eligibleInStateCount)}\n`;
                     }
+
+                    message += `    Total: ${chalk.green(organization.eligibleCount)}`;
 
                     console.log(message);
                 });
@@ -287,13 +278,9 @@ In-state: ${organization.eligibleInStateCount}
 
             // Save
             (next) => {
-                let count = this.getSwapCount();
-                console.log(`${count} names were swapped!`);
-
                 let summary = this.getSummary();
                 fs.writeFileSync(path.join(__dirname, `../../output/summary.csv`), summary);
 
-                console.log('Saving hashes for each organization');
                 async.eachSeries(this.organizations, (organization, next) => {
                     let received = _.map(organization.received, submission => submission.row);
                     stringify(received, {
@@ -305,11 +292,17 @@ In-state: ${organization.eligibleInStateCount}
                     });
                 }, next);
             },
+
+            // Finish
+            (next) => {
+                let count = this.getSwapCount();
+                console.log(`Finished. In total, ${chalk.green(count)} names were swapped.`);
+            },
         ], next);
     }
 
     swap(next) {
-        console.log('Starting swap');
+        console.log('Starting swap...');
         async.forever((next) => {
             let success = false;
 
@@ -365,13 +358,11 @@ In-state: ${organization.eligibleInStateCount}
 
             next(!success);
         }, () => {
-            console.log('Trading has completed');
             next();
         });
     }
 
     distributeUnsourcedSubmissions(next) {
-        console.log('Distributing unsourced submissions');
         let organizations = this.getSortedListOfOwedOrganizations();
 
         async.forever((next) => {

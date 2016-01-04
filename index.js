@@ -2,6 +2,7 @@
 
 let _ = require('lodash');
 let bluebird = require('bluebird');
+let chalk = require('chalk');
 let config = require('./src/config');
 let Organization = require('./src/Organization');
 let path = require('path');
@@ -10,14 +11,14 @@ let Submissions = require('./src/Submissions');
 bluebird.coroutine(function* () {
     // Verify CLI arguments
     if (!config.get('algorithm')) {
-        throw 'Please enter an algorithm as a CLI argument. Ex: YouGetWhatYouGive';
+        throw `Please enter an algorithm as a CLI argument. Ex: YouGetWhatYouGive`;
     }
 
     // Submissions
-    console.log(`Collecting submissions`);
+    console.log(`Collecting submissions...`);
 
     let submissions = new Submissions({
-        path: path.join(__dirname, `input/submissions.csv`),
+        path: path.join(__dirname, 'input/submissions.csv'),
     });
 
     yield submissions.parse();
@@ -25,8 +26,10 @@ bluebird.coroutine(function* () {
     // Organizations
     let organizations = [];
 
+    console.log(`Collecting suppressed hashes...`);
+
     _.each(config.get('organizations'), (organizationJSON) => {
-        console.log(`Collecting suppressed hashes for ${organizationJSON.name}`);
+        console.log(`- ${chalk.blue(organizationJSON.name)}`);
 
         let organization = new Organization({
             json: organizationJSON,

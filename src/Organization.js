@@ -25,7 +25,6 @@ module.exports = class Organization {
 
     collectAtOnce() {
         let suppressions = this.params.json.suppression || [this.source];
-        console.log(suppressions);
         _.each(suppressions, (suppression) => {
             let url = path.join(__dirname, `../input/suppression/${suppression}.csv`);
 

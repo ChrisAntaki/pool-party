@@ -2,6 +2,7 @@
 
 // Modules
 let _ = require('lodash');
+let chalk = require('chalk');
 let fs = require('fs');
 let parse = require('csv-parse');
 let crypto = require('crypto');
@@ -56,12 +57,9 @@ module.exports = class Submissions {
             });
 
             this.hashes = _.values(submissions);
-
-            console.log('Unique submission hashes: ' + this.hashes.length);
-
             this.swappableHashes = _.filter(this.hashes, submission => submission.swappable);
 
-            console.log('Unique swappable submission hashes: ' + this.swappableHashes.length);
+            console.log(`Found ${chalk.green(this.swappableHashes.length)} unique swappable submissions.`);
 
             fulfill(submissions);
         });
