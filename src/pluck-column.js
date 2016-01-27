@@ -11,10 +11,14 @@ let program = require('commander');
 let stringify = require('csv-stringify');
 
 program
-    .version('0.1.0')
+    // .version('0.1.0')
     .option('-c, --column [index]', 'Pluck the specified column [0]', '0')
     .option('-f, --filename [name.csv]', 'Pluck from the specified file [name.csv]')
     .parse(process.argv);
+
+if (!program.filename || !program.column) {
+    program.help();
+}
 
 let file = fs.readFileSync(path.join(__dirname, `../input/suppression/${program.filename}`));
 let hashes = [];
