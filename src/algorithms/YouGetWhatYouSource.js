@@ -74,6 +74,7 @@ module.exports = class YouGetWhatYouSource {
                     organization.received = [];
                     organization.source = organization.sources[0];
                     organization.sourced = [];
+                    organization.states = organization.states || [];
                     organization.swappableSourced = [];
                 });
 
