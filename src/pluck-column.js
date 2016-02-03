@@ -20,7 +20,7 @@ if (!program.filename || !program.column) {
     program.help();
 }
 
-let file = fs.readFileSync(path.join(__dirname, `../input/suppression/${program.filename}`));
+let file = fs.readFileSync(path.join(__dirname, `../${program.filename}`));
 let hashes = [];
 
 parse(file, (err, rows) => {
@@ -30,7 +30,7 @@ parse(file, (err, rows) => {
 
     console.log(`Found ${chalk.green(hashes.length)} rows.`);
 
-    fs.writeFileSync(path.join(__dirname, `../input/suppression/${program.filename}.plucked.csv`), hashes.join('\n'));
+    fs.writeFileSync(path.join(__dirname, `../${program.filename}.plucked.csv`), hashes.join('\n'));
 
     console.log(`Saved plucked column to ${chalk.blue(`${program.filename}.plucked.csv`)}`);
 });
