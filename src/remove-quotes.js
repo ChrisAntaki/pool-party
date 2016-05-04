@@ -1,10 +1,8 @@
-'use strict';
-
-// Modules
-let chalk = require('chalk');
-let fs = require('fs');
-let path = require('path');
-let program = require('commander');
+// Requirements
+var chalk = require('chalk');
+var fs = require('fs');
+var path = require('path');
+var program = require('commander');
 
 program
     // .version('0.1.0')
@@ -15,7 +13,7 @@ if (!program.filename) {
     program.help();
 }
 
-let file = fs.readFileSync(path.join(__dirname, `../${program.filename}`), 'utf-8');
+var file = fs.readFileSync(path.join(__dirname, `../${program.filename}`), 'utf-8');
 
 file = file.replace(/"/g, '');
 

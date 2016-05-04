@@ -1,14 +1,12 @@
-'use strict';
-
-// Modules
-let _ = require('lodash');
-let async = require('async');
-let chalk = require('chalk');
-let fs = require('fs');
-let parse = require('csv-parse');
-let path = require('path');
-let program = require('commander');
-let stringify = require('csv-stringify');
+// Requirements
+var _ = require('lodash');
+var async = require('async');
+var chalk = require('chalk');
+var fs = require('fs');
+var parse = require('csv-parse');
+var path = require('path');
+var program = require('commander');
+var stringify = require('csv-stringify');
 
 program
     // .version('0.1.0')
@@ -20,11 +18,11 @@ if (!program.filename || !program.column) {
     program.help();
 }
 
-let file = fs.readFileSync(path.join(__dirname, `../${program.filename}`));
-let hashes = [];
+var file = fs.readFileSync(path.join(__dirname, `../${program.filename}`));
+var hashes = [];
 
 parse(file, (err, rows) => {
-    _.each(rows, (row) => {
+    _.each(rows, row => {
         hashes.push(row[program.column]);
     });
 

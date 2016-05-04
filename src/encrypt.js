@@ -1,13 +1,14 @@
-'use strict';
+// Requirements
+var _ = require('lodash');
+var config = require('../input/config');
+var execute = require('child_process').execSync;
+var fs = require('fs');
+var generate = require('./password').generate;
+var path = require('path');
+var Promise = require('bluebird');
 
-// Modules
-let _ = require('lodash');
-let config = require('../input/config');
-let execute = require('child_process').execSync;
-let fs = require('fs');
-let generate = require('./password').generate;
-let path = require('path');
-let stringify = require('csv-stringify');
+// Promises
+var stringify = Promise.promisify(require('csv-stringify'));
 
 // Make directory
 try {
@@ -28,13 +29,13 @@ try {
 }
 
 // Collect passwords
-let passwords = [];
+var passwords = [];
 
 // Create encrypted archives
-_.each(config.organizations, (organization) => {
-    let name = organization.name;
-    let password = generate(32);
-    let source = organization.sources[0];
+_.each(config.organizations, organization => {
+    var name = organization.name;
+    var password = generate(32);
+    var source = organization.sources[0];
 
     passwords.push({
         name: name,
@@ -44,7 +45,7 @@ _.each(config.organizations, (organization) => {
 
     console.log(`Creating archive for ${name}`);
 
-    let command = `7z a -t7z encrypted/${source}.7z ${source}-* -p"${password}"`;
+    var command = `7z a -t7z encrypted/${source}.7z ${source}-* -p"${password}"`;
     execute(command, {
         cwd: path.join(__dirname, '../output'),
     });
@@ -54,12 +55,12 @@ _.each(config.organizations, (organization) => {
 stringify(passwords, {
     header: true,
     quoted: true,
-}, (err, csv) => {
+}).then(csv => {
     fs.writeFileSync(path.join(__dirname, `../output/encrypted/passwords.csv`), csv);
 
     // Archive everything
     console.log('Archiving everything');
-    let password = generate(32);
+    var password = generate(32);
     execute(`7z a -t7z ${config.campaign}-pool-party.7 * -p"${password}"`, {
         cwd: path.join(__dirname, '../output/encrypted'),
     });

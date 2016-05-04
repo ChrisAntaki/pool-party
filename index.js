@@ -1,48 +1,44 @@
-'use strict';
+// Config
+var config = require('./src/config');
 
-let _ = require('lodash');
-let bluebird = require('bluebird');
-let chalk = require('chalk');
-let config = require('./src/config');
-let Organization = require('./src/Organization');
-let path = require('path');
-let Submissions = require('./src/Submissions');
+// Requirements
+var _ = require('lodash');
+var Algorithm = require('./src/algorithms/' + config.get('algorithm'));
+var chalk = require('chalk');
+var Organization = require('./src/Organization');
+var path = require('path');
+var Submissions = require('./src/Submissions');
 
-bluebird.coroutine(function* () {
-    // Verify CLI arguments
-    if (!config.get('algorithm')) {
-        throw `Please enter an algorithm as a CLI argument. Ex: YouGetWhatYouGive`;
-    }
+// Verify CLI arguments
+if (!config.get('algorithm')) {
+    throw `Please enter an algorithm as a CLI argument. Ex: YouGetWhatYouGive`;
+}
 
-    // Submissions
-    console.log(`Collecting submissions...`);
+// Organizations
+var organizations = [];
 
-    let submissions = new Submissions({
-        path: path.join(__dirname, 'input/submissions.csv'),
+console.log(`Collecting suppressed hashes...`);
+
+_.each(config.get('organizations'), (organizationJSON) => {
+    console.log(`- ${chalk.blue(organizationJSON.name)}`);
+
+    var organization = new Organization({
+        json: organizationJSON,
     });
 
-    yield submissions.parse();
+    organizations.push(organization);
+});
 
-    // Organizations
-    let organizations = [];
+// Submissions
+console.log(`Collecting submissions...`);
 
-    console.log(`Collecting suppressed hashes...`);
+var submissions = new Submissions({
+    path: path.join(__dirname, 'input/submissions.csv'),
+});
 
-    _.each(config.get('organizations'), (organizationJSON) => {
-        console.log(`- ${chalk.blue(organizationJSON.name)}`);
-
-        let organization = new Organization({
-            json: organizationJSON,
-        });
-
-        organizations.push(organization);
-    });
-
-    // Swap
-    let Algorithm = require('./src/algorithms/' + config.get('algorithm'));
-
+submissions.parse().then(f => {
     new Algorithm({
         organizations: organizations,
         submissions: submissions,
     });
-})();
+});
