@@ -194,7 +194,7 @@ module.exports = class Olympic {
                 organization.eligibleCount = _.size(eligible);
                 organization.eligibleInStateCount = _.size(eligibleInState);
 
-                var message = `- ${chalk.blue(organization.name)}:\n`;
+                var message = `- ${chalk.yellow(organization.name)}:\n`;
 
                 if (organization.states.length) {
                     message += `    Geolocated: ${chalk.green(organization.eligibleInStateCount)}\n`;
