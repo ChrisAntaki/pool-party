@@ -225,7 +225,8 @@ module.exports = class Olympic {
                 // Find the organization who is the farthest from matching their sourced count
                 var organization = _.maxBy(
                     organizations,
-                    organization => organization.swappableSourced.length - organization.received.length
+                    // organization => organization.swappableSourced.length / organization.eligibleCount // Ratio
+                    organization => organization.swappableSourced.length - organization.received.length // Sum
                 );
 
                 if (organization.received.length === organization.swappableSourced.length) {
