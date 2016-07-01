@@ -23,7 +23,7 @@ module.exports = class Organization {
 
     collectAtOnce() {
         var suppressions = this.params.json.suppression || [this.source];
-        _.each(suppressions, (suppression) => {
+        _.each(suppressions, suppression => {
             var url = path.join(__dirname, `../input/suppression/${suppression}.csv`);
 
             _.each(
@@ -33,7 +33,7 @@ module.exports = class Organization {
                     .replace(/\n\n/g, '\n')
                     .split('\n'),
 
-                (row) => {
+                row => {
                     this.hashes[row.trim()] = true;
                 }
             );
