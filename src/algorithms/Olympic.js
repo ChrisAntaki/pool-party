@@ -52,8 +52,7 @@ module.exports = class Olympic {
     }
 
     start() {
-        Promise.resolve('everything')
-        .then(f => {
+        Promise.try(f => {
             // Modifying organization and submissions objects
             _.each(this.organizations, organization => {
                 organization.eligible = [];
@@ -146,12 +145,6 @@ module.exports = class Olympic {
             });
         })
 
-        // Sort submissions by eligibility
-        // Most common to most rare
-        .then(f => {
-            this.submissions.swappableHashes.sort((a, b) => a.eligible.length - b.eligible.length);
-        })
-
         // Assigning eligible submissions to organizations
         .then(f => {
             _.each(this.submissions.swappableHashes, submission => {
@@ -161,18 +154,10 @@ module.exports = class Olympic {
             });
         })
 
-        // Modifying eligibility based on organizational state preference
+        // Sorting eligible submissions
         .then(f => {
             _.each(this.organizations, organization => {
-                if (!organization.states || organization.states.length === 0) {
-                    return;
-                }
-
-                organization.eligible.sort((submissionA, submissionB) => {
-                    var inStateA = +_.includes(organization.states, submissionA.row.state);
-                    var inStateB = +_.includes(organization.states, submissionB.row.state);
-                    return inStateB - inStateA;
-                });
+                this.sortEligibleSubmissionsForOrganization(organization);
             });
         })
 
@@ -222,19 +207,29 @@ module.exports = class Olympic {
                     return;
                 }
 
-                // Find the organization who is the farthest from matching their sourced count
-                var organization = _.maxBy(
-                    organizations,
-                    // organization => organization.swappableSourced.length / organization.eligibleCount // Ratio
-                    organization => organization.swappableSourced.length - organization.received.length // Sum
-                );
+                var organization = organizations[0];
+
+                // // Find the organization who is the farthest from matching their sourced count
+                // var organization = _.maxBy(
+                //     organizations,
+                //     // organization => organization.swappableSourced.length / organization.eligibleCount // Ratio
+                //     organization => organization.swappableSourced.length - organization.received.length // Sum
+                // );
 
                 if (organization.received.length === organization.swappableSourced.length) {
+                    // Remove organization
                     _.pull(organizations, organization);
+
+                    // Sort next organization
+                    organization = organizations[0];
+                    this.sortEligibleSubmissionsForOrganization(organization);
+
+                    // End iteration
                     next();
                     return;
                 }
 
+                // Find next submission
                 var submission = organization.hasSubmissionAvailable();
 
                 if (!submission) {
@@ -296,8 +291,42 @@ module.exports = class Olympic {
                 organization.swappableSourced.length > organization.received.length
             );
         }).sort((a, b) => {
-            // Sort those who've sourced the most first
-            return b.swappableSourced.length - a.swappableSourced.length;
+            // Sort organizations with a higher sourced/eligible ratio earlier
+            var ratioA = a.swappableSourced.length / a.eligibleCount;
+            var ratioB = b.swappableSourced.length / b.eligibleCount;
+            return ratioB - ratioA;
+        });
+    }
+
+    sortEligibleSubmissionsForOrganization(organization) {
+        if (!organization) {
+            return;
+        }
+
+        var sortingByState = (organization.states && organization.states.length > 0);
+
+        organization.eligible.sort((submissionA, submissionB) => {
+            // Sorting less-swapped names earlier
+            if (submissionA.givenCount !== submissionB.givenCount) {
+                return submissionA.givenCount - submissionB.givenCount;
+            }
+
+            // Sorting names in preferred states earlier
+            if (sortingByState) {
+                var inStateA = +_.includes(organization.states, submissionA.row.state);
+                var inStateB = +_.includes(organization.states, submissionB.row.state);
+
+                if (inStateA !== inStateB) {
+                    return inStateB - inStateA;
+                }
+            }
+
+            // Sorting well-known names earlier
+            if (submissionA.eligible.length !== submissionB.eligible.length) {
+                return submissionA.eligible.length - submissionB.eligible.length;
+            }
+
+            return 0;
         });
     }
 }
