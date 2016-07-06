@@ -19,7 +19,7 @@ var organizations = [];
 
 console.log(`Collecting suppressed hashes...`);
 
-_.each(config.get('organizations'), (organizationJSON) => {
+_.each(config.get('organizations'), organizationJSON => {
     console.log(`- ${chalk.yellow(organizationJSON.name)}`);
 
     var organization = new Organization({
