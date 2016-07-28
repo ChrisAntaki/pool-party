@@ -1,10 +1,7 @@
 // Requirements
 const _ = require('lodash');
 const config = require('../../input/config');
-const fs = require('fs');
 const moment = require('moment-timezone');
-const path = require('path');
-const Promise = require('bluebird');
 
 let message = '';
 
