@@ -6,11 +6,11 @@ var path = require('path');
 config
     .argv({
         'algorithm': {
-            default: 'YouGetWhatYouGive',
+            default: 'Olympic',
             // describe: '',
         },
         'cordiality': {
-            default: '1',
+            default: '3',
             // describe: '',
         },
     })
