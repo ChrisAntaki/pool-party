@@ -1,8 +1,8 @@
 // Requirements
-var _ = require('lodash');
-var fs = require('fs');
-var parse = require('csv-parse');
-var path = require('path');
+const _ = require('lodash');
+const fs = require('fs');
+const parse = require('csv-parse');
+const path = require('path');
 
 // Class
 module.exports = class Organization {
@@ -11,6 +11,7 @@ module.exports = class Organization {
         this.hashes = {};
         this.name = params.json.name;
         this.params = params;
+        this.joined = new Date(params.json.joined || 0);
         this.source = params.json.sources[0];
         this.sources = params.json.sources;
         this.states = params.json.states;
@@ -22,9 +23,9 @@ module.exports = class Organization {
     }
 
     collectAtOnce() {
-        var suppressions = this.params.json.suppression || [this.source];
+        const suppressions = this.params.json.suppression || [this.source];
         _.each(suppressions, suppression => {
-            var url = path.join(__dirname, `../input/suppression/${suppression}.csv`);
+            const url = path.join(__dirname, `../input/suppression/${suppression}.csv`);
 
             _.each(
                 fs.readFileSync(url, 'utf-8')
@@ -41,7 +42,7 @@ module.exports = class Organization {
     }
 
     // collectByStreaming() {
-    //     var parser = parse({
+    //     const parser = parse({
     //         columns: ['hash'],
     //     });
     //
@@ -51,7 +52,7 @@ module.exports = class Organization {
     //     });
     //
     //     parser.on('readable', () => {
-    //         for (var row; row = parser.read();) {
+    //         for (const row; row = parser.read();) {
     //             this.hashes[row.hash] = true;
     //         }
     //     });

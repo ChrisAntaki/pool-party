@@ -139,6 +139,11 @@ module.exports = class Olympic {
                         return;
                     }
 
+                    // Skip submissions from before the organization joined
+                    if (organization.joined > submission.created) {
+                        return;
+                    }
+
                     // Used to determine rarity of submission
                     submission.eligible.push(organization);
                 });

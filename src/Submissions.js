@@ -1,12 +1,12 @@
 // Requirements
-var _ = require('lodash');
-var chalk = require('chalk');
-var crypto = require('crypto');
-var fs = require('fs');
-var Promise = require('bluebird');
+const _ = require('lodash');
+const chalk = require('chalk');
+const crypto = require('crypto');
+const fs = require('fs');
+const Promise = require('bluebird');
 
 // Promises
-var parse = Promise.promisify(require('csv-parse'));
+const parse = Promise.promisify(require('csv-parse'));
 
 // Class
 module.exports = class Submissions {
@@ -24,17 +24,17 @@ module.exports = class Submissions {
     }
 
     collect(fulfill, reject) {
-        var input = fs.readFileSync(this.params.path);
-        var options = { columns: true };
+        const input = fs.readFileSync(this.params.path);
+        const options = { columns: true };
 
         parse(input, options)
         .then(rows => {
-            var submissions = {};
+            const submissions = {};
 
             _.each(rows, row => {
-                var email = row.email.trim().toUpperCase();
-                var hash = crypto.createHash('md5').update(email).digest('hex');
-                var submission = submissions[hash];
+                const email = row.email.trim().toUpperCase();
+                const hash = crypto.createHash('md5').update(email).digest('hex');
+                let submission = submissions[hash];
 
                 if (!submission) {
                     submission = submissions[hash] = {
@@ -47,7 +47,7 @@ module.exports = class Submissions {
 
                 submission.sources[row.source] = true;
 
-                var createdAt = new Date(row.created_at);
+                const createdAt = new Date(row.created_at);
                 if (!submission.created || submission.created < createdAt) {
                     submission.created = createdAt;
                 }
