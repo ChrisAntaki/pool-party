@@ -129,6 +129,17 @@ module.exports = class Olympic {
             this.organizations = _.filter(this.organizations, organization => organization.swapping);
         })
 
+        // Removing submissions sourced from only non-swapping organizations
+        .then(f => {
+            this.submissions.swappableHashes = _.filter(this.submissions.swappableHashes, submission => {
+                if (submission.sourceObjects.length === 0) {
+                    return true;
+                }
+
+                return !!_.find(submission.sourceObjects, organization => organization.swapping);
+            });
+        })
+
         // Assigning eligible organizations to each submission
         .then(f => {
             // Assigning eligiblity to submissions
