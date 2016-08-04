@@ -1,5 +1,6 @@
 // Requirements
 const _ = require('lodash');
+const chalk = require('chalk');
 const fs = require('fs');
 const parse = require('csv-parse');
 const path = require('path');
@@ -34,8 +35,18 @@ module.exports = class Organization {
                     .replace(/\n\n/g, '\n')
                     .split('\n'),
 
-                row => {
-                    this.hashes[row.trim()] = true;
+                (row, i) => {
+                    var hash = row.trim();
+
+                    // Check for @ signs, in the first few rows
+                    if (i < 5) {
+                        if (hash.match('@')) {
+                            console.log(`${chalk.red('Warning:')} '${suppression}.csv' contains ${chalk.green('@')} symbols`);
+                            throw '@ symbols in suppression list';
+                        }
+                    }
+
+                    this.hashes[hash] = true;
                 }
             );
         });
