@@ -15,6 +15,4 @@ function generate(length) {
     return password;
 }
 
-module.exports = {
-    generate: generate,
-};
+module.exports = {generate};

@@ -7,10 +7,10 @@ const async = require('async');
 const chalk = require('chalk');
 const cordiality = +config.get('cordiality');
 const fs = require('fs');
-const Organization = require('../Organization');
+const Organization = require('../organization');
 const path = require('path');
 const Promise = require('bluebird');
-const Submissions = require('../Submissions');
+const Submissions = require('../submissions');
 
 // Promises
 const stringify = Promise.promisify(require('csv-stringify'));
