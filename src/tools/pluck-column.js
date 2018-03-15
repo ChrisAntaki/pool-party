@@ -1,12 +1,12 @@
 // Requirements
-var _ = require('lodash');
-var async = require('async');
-var chalk = require('chalk');
-var fs = require('fs');
-var parse = require('csv-parse');
-var path = require('path');
-var program = require('commander');
-var stringify = require('csv-stringify');
+const _ = require('lodash');
+const async = require('async');
+const chalk = require('chalk');
+const fs = require('fs');
+const parse = require('csv-parse');
+const path = require('path');
+const program = require('commander');
+const stringify = require('csv-stringify');
 
 program
     // .version('0.1.0')
@@ -18,8 +18,8 @@ if (!program.filename || !program.column) {
     program.help();
 }
 
-var file = fs.readFileSync(path.join(__dirname, `../../${program.filename}`));
-var hashes = [];
+const file = fs.readFileSync(path.join(__dirname, `../../${program.filename}`));
+const hashes = [];
 
 parse(file, (err, rows) => {
     _.each(rows, row => {

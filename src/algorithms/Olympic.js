@@ -1,24 +1,24 @@
 // Config
-var config = require('../config');
+const config = require('../config');
 
 // Requirements
-var _ = require('lodash');
-var async = require('async');
-var chalk = require('chalk');
-var cordiality = +config.get('cordiality');
-var fs = require('fs');
-var Organization = require('../Organization');
-var path = require('path');
-var Promise = require('bluebird');
-var Submissions = require('../Submissions');
+const _ = require('lodash');
+const async = require('async');
+const chalk = require('chalk');
+const cordiality = +config.get('cordiality');
+const fs = require('fs');
+const Organization = require('../Organization');
+const path = require('path');
+const Promise = require('bluebird');
+const Submissions = require('../Submissions');
 
 // Promises
-var stringify = Promise.promisify(require('csv-stringify'));
+const stringify = Promise.promisify(require('csv-stringify'));
 
 // Modifications
 Organization.prototype.hasSubmissionAvailable = function hasSubmissionAvailable() {
-    var indexesToRemove = [];
-    var submission = _.find(this.eligible, (submission, index) => {
+    const indexesToRemove = [];
+    const submission = _.find(this.eligible, (submission, index) => {
         if (!this.hashes[submission.hash] && submission.givenCount < cordiality) {
             return true;
         } else {
@@ -35,7 +35,7 @@ Organization.prototype.hasSubmissionAvailable = function hasSubmissionAvailable(
 }
 
 Organization.prototype.takeSubmission = function takeSubmission() {
-    var submission = this.eligible.shift();
+    const submission = this.eligible.shift();
     submission.givenCount++;
     this.hashes[submission.hash] = true;
     this.received.push(submission);
@@ -73,7 +73,7 @@ module.exports = class Olympic {
 
         // Assigning submissions to organizations
         .then(f => {
-            var sourceMap = {};
+            const sourceMap = {};
 
             _.each(this.organizations, organization => {
                 _.each(organization.sources, source => {
@@ -85,7 +85,7 @@ module.exports = class Olympic {
                 submission.sourceObjects = [];
 
                 _.each(_.keys(submission.sources), source => {
-                    var organization = sourceMap[source];
+                    const organization = sourceMap[source];
                     if (organization) {
                         organization.hashes[submission.hash] = true;
                         organization.sourced.push(submission);
@@ -114,12 +114,12 @@ module.exports = class Olympic {
         // Saving sourced signatures
         .then(f => this.organizations)
         .each(organization => {
-            var sourced = _.map(organization.sourced, submission => submission.row);
+            const sourced = _.map(organization.sourced, submission => submission.row);
             return stringify(sourced, {
                 header: true,
                 quoted: true,
             }).then(csv => {
-                var filename = path.join(__dirname, `../../output/${organization.source}-own.csv`);
+                const filename = path.join(__dirname, `../../output/${organization.source}-own.csv`);
                 fs.writeFileSync(filename, csv);
             });
         })
@@ -181,8 +181,8 @@ module.exports = class Olympic {
         .then(f => {
             console.log(`Eligible hashes for...`);
             _.each(this.organizations, organization => {
-                var eligible = {};
-                var eligibleInState = {};
+                const eligible = {};
+                const eligibleInState = {};
 
                 _.each(organization.eligible, submission => {
                     eligible[submission.hash] = true;
@@ -195,7 +195,7 @@ module.exports = class Olympic {
                 organization.eligibleCount = _.size(eligible);
                 organization.eligibleInStateCount = _.size(eligibleInState);
 
-                var message = `- ${chalk.yellow(organization.name)}:\n`;
+                let message = `- ${chalk.yellow(organization.name)}:\n`;
 
                 if (organization.states.length) {
                     message += `    Geolocated: ${chalk.green(organization.eligibleInStateCount)}\n`;
@@ -209,12 +209,12 @@ module.exports = class Olympic {
 
         // Swap
         .then(f => {
-            var finish;
-            var promise = new Promise((resolve, reject) => {
+            let finish;
+            const promise = new Promise((resolve, reject) => {
                 finish = resolve;
             });
 
-            var organizations = this.getSortedListOfOwedOrganizations();
+            const organizations = this.getSortedListOfOwedOrganizations();
 
             async.forever(next => {
                 // Check if every organization has bounced
@@ -223,15 +223,7 @@ module.exports = class Olympic {
                     return;
                 }
 
-                var organization = organizations[0];
-
-                // // Find the organization who is the farthest from matching their sourced count
-                // var organization = _.maxBy(
-                //     organizations,
-                //     // organization => organization.swappableSourced.length / organization.eligibleCount // Ratio
-                //     organization => organization.swappableSourced.length - organization.received.length // Sum
-                // );
-
+                const organization = organizations[0];
                 if (organization.received.length === organization.swappableSourced.length) {
                     // Remove organization
                     _.pull(organizations, organization);
@@ -246,7 +238,7 @@ module.exports = class Olympic {
                 }
 
                 // Find next submission
-                var submission = organization.hasSubmissionAvailable();
+                const submission = organization.hasSubmissionAvailable();
 
                 if (!submission) {
                     _.pull(organizations, organization);
@@ -266,14 +258,14 @@ module.exports = class Olympic {
 
         // Save summary
         .then(f => {
-            var filename = path.join(__dirname, `../../output/summary.csv`);
-            var summary = 'Organization,Sourced,Eligible,Received,Percent\n';
+            const filename = path.join(__dirname, `../../output/summary.csv`);
+            let summary = 'Organization,Sourced,Eligible,Received,Percent\n';
             _.each(this.organizations, organization => {
-                var eligibleCount = organization.eligibleCount;
-                var name = organization.name;
-                var receivedTotal = organization.received.length;
-                var sourced = organization.swappableSourced.length;
-                var percent = ((receivedTotal / sourced) * 100).toFixed(2);
+                const eligibleCount = organization.eligibleCount;
+                const name = organization.name;
+                const receivedTotal = organization.received.length;
+                const sourced = organization.swappableSourced.length;
+                const percent = ((receivedTotal / sourced) * 100).toFixed(2);
                 summary += `${name},${sourced},${eligibleCount},${receivedTotal},${percent}%\n`;
             });
             fs.writeFileSync(filename, summary);
@@ -282,19 +274,19 @@ module.exports = class Olympic {
         // Save organization files
         .then(f => this.organizations)
         .each(organization => {
-            var received = _.map(organization.received, submission => submission.row);
+            const received = _.map(organization.received, submission => submission.row);
             return stringify(received, {
                 header: true,
                 quoted: true,
             }).then(csv => {
-                var filename = path.join(__dirname, `../../output/${organization.source}-swapped.csv`);
+                const filename = path.join(__dirname, `../../output/${organization.source}-swapped.csv`);
                 fs.writeFileSync(filename, csv);
             });
         })
 
         // Finish
         .then(f => {
-            var count = _.sumBy(this.organizations, organization => {
+            const count = _.sumBy(this.organizations, organization => {
                 return organization.received.length;
             });
             console.log(`Finished. In total, ${chalk.green(count)} names were swapped.`);
@@ -308,8 +300,8 @@ module.exports = class Olympic {
             );
         }).sort((a, b) => {
             // Sort organizations with a higher sourced/eligible ratio earlier
-            var ratioA = a.swappableSourced.length / a.eligibleCount;
-            var ratioB = b.swappableSourced.length / b.eligibleCount;
+            const ratioA = a.swappableSourced.length / a.eligibleCount;
+            const ratioB = b.swappableSourced.length / b.eligibleCount;
             return ratioB - ratioA;
         });
     }
@@ -319,7 +311,7 @@ module.exports = class Olympic {
             return;
         }
 
-        var sortingByState = (organization.states && organization.states.length > 0);
+        const sortingByState = (organization.states && organization.states.length > 0);
 
         organization.eligible.sort((submissionA, submissionB) => {
             // Sorting less-swapped names earlier
@@ -329,8 +321,8 @@ module.exports = class Olympic {
 
             // Sorting names in preferred states earlier
             if (sortingByState) {
-                var inStateA = +_.includes(organization.states, submissionA.row.state);
-                var inStateB = +_.includes(organization.states, submissionB.row.state);
+                const inStateA = +_.includes(organization.states, submissionA.row.state);
+                const inStateB = +_.includes(organization.states, submissionB.row.state);
 
                 if (inStateA !== inStateB) {
                     return inStateB - inStateA;

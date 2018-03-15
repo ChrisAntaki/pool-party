@@ -1,14 +1,14 @@
 // Requirements
-var _ = require('lodash');
-var config = require('../input/config');
-var execute = require('child_process').execSync;
-var fs = require('fs');
-var generate = require('./password').generate;
-var path = require('path');
-var Promise = require('bluebird');
+const _ = require('lodash');
+const config = require('../input/config');
+const execute = require('child_process').execSync;
+const fs = require('fs');
+const generate = require('./password').generate;
+const path = require('path');
+const Promise = require('bluebird');
 
 // Promises
-var stringify = Promise.promisify(require('csv-stringify'));
+const stringify = Promise.promisify(require('csv-stringify'));
 
 // Make directory
 try {
@@ -29,13 +29,13 @@ try {
 }
 
 // Collect passwords
-var passwords = [];
+const passwords = [];
 
 // Create encrypted archives
 _.each(config.organizations, organization => {
-    var name = organization.name;
-    var password = generate(32);
-    var source = organization.sources[0];
+    const name = organization.name;
+    const password = generate(32);
+    const source = organization.sources[0];
 
     passwords.push({
         name: name,
@@ -45,7 +45,7 @@ _.each(config.organizations, organization => {
 
     console.log(`Creating archive for ${name}`);
 
-    var command = `7z a -t7z encrypted/${source}.7z ${source}-* -p"${password}"`;
+    const command = `7z a -t7z encrypted/${source}.7z ${source}-* -p"${password}"`;
     execute(command, {
         cwd: path.join(__dirname, '../output'),
     });
@@ -60,7 +60,7 @@ stringify(passwords, {
 
     // Archive everything
     console.log('Archiving everything');
-    var password = generate(32);
+    const password = generate(32);
     execute(`7z a -t7z ${config.campaign}-pool-party.7 * -p"${password}"`, {
         cwd: path.join(__dirname, '../output/encrypted'),
     });

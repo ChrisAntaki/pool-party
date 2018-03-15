@@ -1,6 +1,6 @@
 // Modules
-var config = require('nconf');
-var path = require('path');
+const config = require('nconf');
+const path = require('path');
 
 // Multi-source configuration
 config

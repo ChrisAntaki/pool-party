@@ -36,7 +36,7 @@ module.exports = class Organization {
                     .split('\n'),
 
                 (row, i) => {
-                    var hash = row.trim();
+                    const hash = row.trim();
 
                     // Check for @ signs, in the first few rows
                     if (i < 5) {

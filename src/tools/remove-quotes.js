@@ -1,8 +1,8 @@
 // Requirements
-var chalk = require('chalk');
-var fs = require('fs');
-var path = require('path');
-var program = require('commander');
+const chalk = require('chalk');
+const fs = require('fs');
+const path = require('path');
+const program = require('commander');
 
 program
     // .version('0.1.0')
@@ -13,7 +13,7 @@ if (!program.filename) {
     program.help();
 }
 
-var file = fs.readFileSync(path.join(__dirname, `../../${program.filename}`), 'utf-8');
+const file = fs.readFileSync(path.join(__dirname, `../../${program.filename}`), 'utf-8');
 
 file = file.replace(/"/g, '');
 

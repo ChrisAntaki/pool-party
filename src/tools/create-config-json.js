@@ -1,11 +1,11 @@
 // Requirements
-var _ = require('lodash');
-var beautify = require('js-beautify').js_beautify
-var chalk = require('chalk');
-var fs = require('fs');
-var path = require('path');
-var program = require('commander');
-var Promise = require('bluebird');
+const _ = require('lodash');
+const beautify = require('js-beautify').js_beautify
+const chalk = require('chalk');
+const fs = require('fs');
+const path = require('path');
+const program = require('commander');
+const Promise = require('bluebird');
 
 program
     // .version('0.1.0')
@@ -14,16 +14,16 @@ program
     .option('-c, --campaign [ABC]', 'Choose a campaign name [ABC]', 'ABC')
     .parse(process.argv);
 
-var config = {};
+const config = {};
 config.campaign = program.campaign;
 config.organizations = {};
 
-var listings = fs.readdirSync(path.join(__dirname, `../../input/suppression`));
-var csvs = _.filter(listings, listing => {
+const listings = fs.readdirSync(path.join(__dirname, `../../input/suppression`));
+const csvs = _.filter(listings, listing => {
     return listing.match(/.csv$/);
 });
 _.each(csvs, csv => {
-    var org = csv.match(/^\w+/)[0];
+    const org = csv.match(/^\w+/)[0];
     config.organizations[org] = {
         name: org,
         sources: [
@@ -37,7 +37,7 @@ _.each(csvs, csv => {
     };
 });
 
-var json = beautify(JSON.stringify(config), 4);
+const json = beautify(JSON.stringify(config), 4);
 if (!program.save) {
     console.log(json);
     process.exit(0);
