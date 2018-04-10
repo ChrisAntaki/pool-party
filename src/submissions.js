@@ -1,5 +1,6 @@
 // Requirements
 const _ = require('lodash');
+const chalk = require('chalk');
 const crypto = require('crypto');
 const fs = require('fs');
 const Promise = require('bluebird');

@@ -223,7 +223,7 @@ module.exports = class Olympic {
                     return;
                 }
 
-                const organization = organizations[0];
+                let organization = organizations[0];
                 if (organization.received.length === organization.swappableSourced.length) {
                     // Remove organization
                     _.pull(organizations, organization);
