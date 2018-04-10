@@ -1,8 +1,11 @@
-# Ignore:
+# Ignore
 node_modules/
 input/*
 output/*
 notes/
 
-# Except for:
+# Don't ignore
 !*.keep
+!input/config.json
+!input/organization_a.csv
+!input/organization_b.csv

@@ -1,0 +1,43 @@
+{
+    "campaign": "campaign_a",
+
+    "organizations": {
+        "organization_a": {
+            "name": "Organization A",
+            "sources": [
+                "organization_a",
+                "organization_a-emailshare",
+                "organization_a-fbshare",
+                "organization_a-twittershare"
+            ],
+            "swapping": true
+        },
+
+        "organization_b": {
+            "name": "Organization B",
+            "suppression": [
+                "organization_b_1",
+                "organization_b_2"
+            ],
+            "sources": [
+                "organization_b",
+                "organization_b-emailshare",
+                "organization_b-fbshare",
+                "organization_b-twittershare"
+            ],
+            "states": ["CA"],
+            "swapping": true
+        },
+
+        "organization_c": {
+            "name": "Organization C",
+            "sources": [
+                "organization-c",
+                "organization-c-emailshare",
+                "organization-c-fbshare",
+                "organization-c-twittershare"
+            ],
+            "swapping": false
+        }
+    }
+}
