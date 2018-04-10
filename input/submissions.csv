@@ -1,0 +1,10 @@
+email,source,created_at,swappable,state
+email1@domain.com,organization_a,1600000010000,consent,CA
+email2@domain.com,organization_a,1600000020000,consent,NY
+email3@domain.com,organization_a,1600000030000,,CA
+email4@domain.com,organization_b,1600000040000,consent,NY
+email5@domain.com,organization_b,1600000050000,consent,CA
+email6@domain.com,organization_b,1600000060000,,NY
+email7@domain.com,organization_c,1600000070000,consent,CA
+email8@domain.com,organization_c,1600000080000,consent,NY
+email9@domain.com,website,1600000090000,consent,CA

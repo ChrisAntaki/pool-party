@@ -8,7 +8,8 @@
                 "organization_a",
                 "organization_a-emailshare",
                 "organization_a-fbshare",
-                "organization_a-twittershare"
+                "organization_a-twittershare",
+                "website"
             ],
             "swapping": true
         },
@@ -32,10 +33,10 @@
         "organization_c": {
             "name": "Organization C",
             "sources": [
-                "organization-c",
-                "organization-c-emailshare",
-                "organization-c-fbshare",
-                "organization-c-twittershare"
+                "organization_c",
+                "organization_c-emailshare",
+                "organization_c-fbshare",
+                "organization_c-twittershare"
             ],
             "swapping": false
         }
