@@ -1,13 +1,13 @@
 // Config
-var config = require('./src/config');
+const config = require('./src/config');
 
 // Requirements
-var _ = require('lodash');
-var Algorithm = require('./src/algorithms/' + config.get('algorithm'));
-var chalk = require('chalk');
-var Organization = require('./src/organization');
-var path = require('path');
-var Submissions = require('./src/submissions');
+const _ = require('lodash');
+const Algorithm = require('./src/algorithms/' + config.get('algorithm'));
+const chalk = require('chalk');
+const Organization = require('./src/organization');
+const path = require('path');
+const Submissions = require('./src/submissions');
 
 // Verify CLI arguments
 if (!config.get('algorithm')) {
@@ -15,14 +15,14 @@ if (!config.get('algorithm')) {
 }
 
 // Organizations
-var organizations = [];
+const organizations = [];
 
 console.log(`Collecting suppressed hashes...`);
 
-_.each(config.get('organizations'), organizationJSON => {
+_.each(config.get('organizations'), (organizationJSON) => {
     console.log(`- ${chalk.yellow(organizationJSON.name)}`);
 
-    var organization = new Organization({
+    const organization = new Organization({
         json: organizationJSON,
     });
 
@@ -32,11 +32,11 @@ _.each(config.get('organizations'), organizationJSON => {
 // Submissions
 console.log(`Collecting submissions...`);
 
-var submissions = new Submissions({
+const submissions = new Submissions({
     path: path.join(__dirname, 'input/submissions.csv'),
 });
 
-submissions.parse().then(f => {
+submissions.parse().then(() => {
     new Algorithm({
         organizations: organizations,
         submissions: submissions,
