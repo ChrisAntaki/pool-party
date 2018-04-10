@@ -5,9 +5,9 @@ var config = require('./src/config');
 var _ = require('lodash');
 var Algorithm = require('./src/algorithms/' + config.get('algorithm'));
 var chalk = require('chalk');
-var Organization = require('./src/Organization');
+var Organization = require('./src/organization');
 var path = require('path');
-var Submissions = require('./src/Submissions');
+var Submissions = require('./src/submissions');
 
 // Verify CLI arguments
 if (!config.get('algorithm')) {
