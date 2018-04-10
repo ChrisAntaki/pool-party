@@ -1,6 +1,6 @@
 # Pool Party
 
-Pool Party allows you to run your own secure email swaps for free.
+Pool Party allows non-profits to run their own secure email swaps for free.
 
 ## Instructions
 
